@@ -75,7 +75,9 @@ Tests/ClamshellCoreTests/
 └── Support/InstallationTestSupport.swift
 
 Tests/ClamshellCLITests/
-└── Commands/SetupCommandTests.swift
+└── Commands/
+    ├── SetupCommandTests.swift
+    └── StatusCommandTests.swift
 ```
 
 ### Quality and repository files
@@ -140,7 +142,7 @@ swift build
 swift build -c release
 ```
 
-Expected: 30 tests in 10 suites pass; both builds exit 0.
+Expected: 33 tests in 12 suites pass; both builds exit 0.
 
 ## Task 2: Organise source and tests by responsibility
 
@@ -208,7 +210,7 @@ swift test
 swift build -c release
 ```
 
-Expected: all 30 tests pass and the release build exits 0.
+Expected: all 33 tests pass and the release build exits 0.
 
 - [ ] **Step 5: Commit the mechanical layout change**
 
@@ -312,7 +314,11 @@ PrivilegedInstallation.swift           PrivilegedInstallation
 
 Keep `InstalledFileAttributes` beside the protocol whose method returns it.
 Retain every existing path, permission (`0755` and `0440`), ownership check,
-temporary-file cleanup, `visudo` validation, and idempotency branch.
+temporary-file cleanup, `visudo` validation, and idempotency branch. Stage both
+replacement files before validation, validate the staged policy, then replace
+the policy before the helper. This avoids changing either live path when
+staging or validation fails; the two separate filesystem renames are not a
+single transaction.
 
 - [ ] **Step 6: Separate CLI composition and output options**
 
@@ -354,7 +360,7 @@ swift build
 swift build -c release
 ```
 
-Expected: all 30 tests pass; both builds exit 0; command output and exit codes
+Expected: all 33 tests pass; both builds exit 0; command output and exit codes
 are unchanged.
 
 - [ ] **Step 10: Commit the focused declarations**
@@ -498,6 +504,9 @@ Do not attach a build-tool plugin to any target. Resolve the exact dependency:
 swift package resolve
 ```
 
+The CLI test target imports ArgumentParser for command parsing, so it declares
+the `ArgumentParser` product directly as well as depending on `ClamshellCLI`.
+
 - [ ] **Step 2: Add a curated non-formatting SwiftLint policy**
 
 First extend the `rules` object in `.swift-format` with the documentation rules
@@ -627,7 +636,7 @@ swift package plugin --allow-writing-to-package-directory swiftlint --strict
 swift test
 ```
 
-Expected: both linters exit 0 and all 30 tests pass.
+Expected: both linters exit 0 and all 33 tests pass.
 
 - [ ] **Step 6: Commit linting and API documentation**
 
@@ -664,6 +673,9 @@ if [[ ! "$subject" =~ $pattern ]]; then
 fi
 ```
 
+Dependency updates use `build(deps): ...`; `deps` is not a separate accepted
+verb, so dependency commits stay inside the repository's standard vocabulary.
+
 Make it executable and verify both branches:
 
 ```bash
@@ -682,7 +694,8 @@ Create executable `scripts/check.sh`:
 #!/bin/bash
 set -euo pipefail
 
-readonly repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly repository_root
 cd "$repository_root"
 
 swift_paths=(Package.swift Sources Tests)
@@ -814,10 +827,14 @@ jobs:
 
 - [ ] **Step 2: Add PR title and commit validation**
 
-Create `pr.yml` with two stable jobs, `Title` and `Commits`. Both invoke
-`scripts/check-conventional-subject.sh`. Check out the pull request's head SHA
-with full history for the commit job so the synthetic merge subject is never
-validated.
+Create `pr.yml` with two stable jobs, `Title` and `Commits`. The title job
+checks out the trusted base revision. The commit job checks out the pull
+request's head SHA with full history for the commit range, but extracts the
+validator from the trusted base revision before invoking it. The synthetic
+merge subject is never validated, and a pull request cannot alter the
+validator it uses. The bootstrap pull request that first adds the validator
+may require the maintainer's configured administrative bypass until the file
+exists on `main`.
 
 ```yaml
 name: PR
@@ -826,6 +843,10 @@ on:
   pull_request:
     branches: [main]
     types: [opened, edited, reopened, synchronize]
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
 permissions:
   contents: read
@@ -839,6 +860,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          ref: ${{ github.event.pull_request.base.sha }}
       - env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: scripts/check-conventional-subject.sh "$PR_TITLE"
@@ -856,8 +878,11 @@ jobs:
       - env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
+          validator="$RUNNER_TEMP/check-conventional-subject.sh"
+          git show "$BASE_SHA:scripts/check-conventional-subject.sh" > "$validator"
+          chmod +x "$validator"
           while IFS= read -r subject; do
-            scripts/check-conventional-subject.sh "$subject"
+            "$validator" "$subject"
           done < <(git log --format=%s "$BASE_SHA..HEAD")
 ```
 
@@ -908,13 +933,16 @@ concurrency:
 
 permissions:
   contents: read
-  security-events: write
 
 jobs:
   analyze:
     name: Analyze (swift)
     runs-on: macos-26
     timeout-minutes: 30
+    permissions:
+      contents: read
+      # CodeQL must upload Swift analysis results to code scanning.
+      security-events: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -974,6 +1002,10 @@ Create `.release-please-manifest.json`:
 }
 ```
 
+The synthetic `0.0.0` root version is intentional: with
+`bump-minor-pre-major: true`, the first feature release becomes `0.1.0`.
+Release-please does not use an `initial-version` setting in this configuration.
+
 Create `CHANGELOG.md`:
 
 ```markdown
@@ -1006,7 +1038,6 @@ Create `release-please-config.json`:
         {"type": "fix", "section": "Fixes"},
         {"type": "perf", "section": "Performance"},
         {"type": "docs", "section": "Documentation"},
-        {"type": "deps", "section": "Dependencies"},
         {"type": "test", "section": "Tests", "hidden": true},
         {"type": "build", "section": "Build", "hidden": true},
         {"type": "ci", "section": "CI", "hidden": true},
@@ -1043,6 +1074,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
+      # release-please opens release PRs, updates release metadata, and creates releases.
       contents: write
       issues: write
       pull-requests: write
@@ -1129,7 +1161,7 @@ required fields and labels consistent with `type: bug` and `type: feature`.
 The pull-request template must include summary, linked issues, behaviour and
 security impact, verification commands, screenshots only when UI changes, and
 a checklist covering `scripts/check.sh`, documentation, and scoped commit
-subjects.
+subjects. Start it with a single top-level `# Summary` heading.
 
 - [ ] **Step 4: Align public and internal documentation**
 
