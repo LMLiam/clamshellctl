@@ -1,5 +1,6 @@
 import ArgumentParser
 import ClamshellCore
+import Foundation
 
 @main
 struct ClamshellCommand: ParsableCommand {
@@ -12,6 +13,8 @@ struct ClamshellCommand: ParsableCommand {
             EnableCommand.self,
             DisableCommand.self,
             ToggleCommand.self,
+            SetupCommand.self,
+            UninstallCommand.self,
         ],
         defaultSubcommand: StatusCommand.self
     )
@@ -24,5 +27,16 @@ enum CommandComposition {
             stateReader: PowerSettingsClient(runner: runner),
             stateWriter: PrivilegedHelperClient(runner: runner)
         )
+    }
+
+    static func privilegedInstallation() throws -> PrivilegedInstallation {
+        guard
+            let executablePath = Bundle.main.executableURL?
+                .resolvingSymlinksInPath()
+                .path
+        else {
+            throw ClamshellError.executablePathUnavailable
+        }
+        return PrivilegedInstallation(executablePath: executablePath)
     }
 }

@@ -29,5 +29,9 @@ let package = Package(
             dependencies: ["ClamshellCore"]
         ),
         .testTarget(name: "ClamshellCoreTests", dependencies: ["ClamshellCore"]),
+        .testTarget(
+            name: "ClamshellCLITests",
+            dependencies: ["ClamshellCLI", "ClamshellCore"]
+        ),
     ]
 )

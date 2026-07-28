@@ -4,12 +4,27 @@ import Foundation
 public protocol InstallationFileSystem: Sendable {
     func itemExists(at path: String) -> Bool
     func isRegularFile(at path: String) -> Bool
+    func contentsEqual(at firstPath: String, and secondPath: String) -> Bool
+    func readText(at path: String) throws -> String
+    func attributes(at path: String) throws -> InstalledFileAttributes
     func copyItem(at source: String, to destination: String) throws
     func write(_ contents: String, to path: String) throws
     func setOwner(userID: UInt32, groupID: UInt32, at path: String) throws
     func setPermissions(_ permissions: UInt16, at path: String) throws
     func replaceItem(at destination: String, withItemAt replacement: String) throws
     func removeItem(at path: String) throws
+}
+
+public struct InstalledFileAttributes: Sendable, Equatable {
+    public let userID: UInt32
+    public let groupID: UInt32
+    public let permissions: UInt16
+
+    public init(userID: UInt32, groupID: UInt32, permissions: UInt16) {
+        self.userID = userID
+        self.groupID = groupID
+        self.permissions = permissions
+    }
 }
 
 public struct FoundationInstallationFileSystem: InstallationFileSystem {
@@ -28,6 +43,30 @@ public struct FoundationInstallationFileSystem: InstallationFileSystem {
             return false
         }
         return type == .typeRegular
+    }
+
+    public func contentsEqual(at firstPath: String, and secondPath: String) -> Bool {
+        FileManager.default.contentsEqual(atPath: firstPath, andPath: secondPath)
+    }
+
+    public func readText(at path: String) throws -> String {
+        try String(contentsOfFile: path, encoding: .utf8)
+    }
+
+    public func attributes(at path: String) throws -> InstalledFileAttributes {
+        let attributes = try FileManager.default.attributesOfItem(atPath: path)
+        guard
+            let userID = attributes[.ownerAccountID] as? NSNumber,
+            let groupID = attributes[.groupOwnerAccountID] as? NSNumber,
+            let permissions = attributes[.posixPermissions] as? NSNumber
+        else {
+            throw ClamshellError.installationVerificationFailed
+        }
+        return InstalledFileAttributes(
+            userID: userID.uint32Value,
+            groupID: groupID.uint32Value,
+            permissions: permissions.uint16Value
+        )
     }
 
     public func copyItem(at source: String, to destination: String) throws {
@@ -71,10 +110,16 @@ public struct FoundationInstallationFileSystem: InstallationFileSystem {
 public struct InstallationResult: Sendable, Equatable {
     public let helperPath: String
     public let sudoersPolicyPath: String
+    public let didChange: Bool
 
-    public init(helperPath: String, sudoersPolicyPath: String) {
+    public init(
+        helperPath: String,
+        sudoersPolicyPath: String,
+        didChange: Bool = true
+    ) {
         self.helperPath = helperPath
         self.sudoersPolicyPath = sudoersPolicyPath
+        self.didChange = didChange
     }
 }
 
@@ -110,6 +155,16 @@ public struct PrivilegedInstallation: Sendable {
         self.temporarySuffix = temporarySuffix
     }
 
+    public init(executablePath: String) {
+        self.init(
+            fileSystem: FoundationInstallationFileSystem(),
+            runner: FoundationProcessRunner(),
+            effectiveUserID: geteuid(),
+            environment: ProcessInfo.processInfo.environment,
+            executablePath: executablePath
+        )
+    }
+
     public func install() throws -> InstallationResult {
         try requireAdministratorPrivileges()
 
@@ -118,6 +173,14 @@ public struct PrivilegedInstallation: Sendable {
         }
         let policy = try SudoersPolicy(username: originalUser)
         let payload = try helperPayloadPath()
+
+        if try isConfigured(payload: payload, policy: policy) {
+            return InstallationResult(
+                helperPath: PrivilegedPaths.helper,
+                sudoersPolicyPath: PrivilegedPaths.sudoersPolicy,
+                didChange: false
+            )
+        }
 
         let helperTemporary = temporaryPath(for: PrivilegedPaths.helper)
         var helperTemporaryExists = false
@@ -147,6 +210,7 @@ public struct PrivilegedInstallation: Sendable {
 
         try fileSystem.write(policy.contents, to: policyTemporary)
         policyTemporaryExists = true
+        try fileSystem.setOwner(userID: 0, groupID: 0, at: policyTemporary)
         try fileSystem.setPermissions(0o440, at: policyTemporary)
 
         let validation = try runner.run(
@@ -163,14 +227,19 @@ public struct PrivilegedInstallation: Sendable {
         )
         policyTemporaryExists = false
 
+        guard try isConfigured(payload: payload, policy: policy) else {
+            throw ClamshellError.installationVerificationFailed
+        }
+
         return InstallationResult(
             helperPath: PrivilegedPaths.helper,
-            sudoersPolicyPath: PrivilegedPaths.sudoersPolicy
+            sudoersPolicyPath: PrivilegedPaths.sudoersPolicy,
+            didChange: true
         )
     }
 
     public func uninstall() throws -> UninstallationResult {
-        try requireAdministratorPrivileges()
+        try requireAdministratorPrivileges(command: PrivilegedHelperClient.uninstallCommand)
 
         var removedPaths: [String] = []
         for path in [PrivilegedPaths.helper, PrivilegedPaths.sudoersPolicy]
@@ -182,9 +251,13 @@ public struct PrivilegedInstallation: Sendable {
     }
 
     private func requireAdministratorPrivileges() throws {
+        try requireAdministratorPrivileges(command: PrivilegedHelperClient.setupCommand)
+    }
+
+    private func requireAdministratorPrivileges(command: String) throws {
         guard effectiveUserID == 0 else {
             throw ClamshellError.administratorPrivilegesRequired(
-                command: PrivilegedHelperClient.setupCommand
+                command: command
             )
         }
     }
@@ -213,5 +286,26 @@ public struct PrivilegedInstallation: Sendable {
 
     private func temporaryPath(for destination: String) -> String {
         "\(destination).installing.\(temporarySuffix)"
+    }
+
+    private func isConfigured(payload: String, policy: SudoersPolicy) throws -> Bool {
+        guard
+            fileSystem.isRegularFile(at: PrivilegedPaths.helper),
+            fileSystem.contentsEqual(at: payload, and: PrivilegedPaths.helper),
+            try fileSystem.attributes(at: PrivilegedPaths.helper)
+                == InstalledFileAttributes(userID: 0, groupID: 0, permissions: 0o755),
+            fileSystem.isRegularFile(at: PrivilegedPaths.sudoersPolicy),
+            try fileSystem.readText(at: PrivilegedPaths.sudoersPolicy) == policy.contents,
+            try fileSystem.attributes(at: PrivilegedPaths.sudoersPolicy)
+                == InstalledFileAttributes(userID: 0, groupID: 0, permissions: 0o440)
+        else {
+            return false
+        }
+
+        let validation = try runner.run(
+            "/usr/sbin/visudo",
+            arguments: ["-cf", PrivilegedPaths.sudoersPolicy]
+        )
+        return validation.terminationStatus == 0
     }
 }

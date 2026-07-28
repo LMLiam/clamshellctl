@@ -1,5 +1,6 @@
 public struct PrivilegedHelperClient: PowerStateWriting, Sendable {
     public static let setupCommand = #"sudo "$(brew --prefix)/bin/clamshellctl" setup"#
+    public static let uninstallCommand = #"sudo "$(brew --prefix)/bin/clamshellctl" uninstall"#
 
     private static let executable = "/usr/bin/sudo"
     private let runner: any ProcessRunning

@@ -2,7 +2,9 @@ import Foundation
 
 public enum ClamshellError: Error, Equatable, LocalizedError {
     case administratorPrivilegesRequired(command: String)
+    case executablePathUnavailable
     case helperPayloadNotFound
+    case installationVerificationFailed
     case invalidHelperArguments
     case invalidProcessOutput(executable: String, stream: ProcessOutputStream)
     case invalidUsername(String)
@@ -21,8 +23,12 @@ public enum ClamshellError: Error, Equatable, LocalizedError {
         switch self {
         case .administratorPrivilegesRequired(let command):
             "Administrator privileges are required. Run: \(command)"
+        case .executablePathUnavailable:
+            "Unable to resolve the clamshellctl executable path."
         case .helperPayloadNotFound:
             "Unable to locate the clamshellctl helper payload."
+        case .installationVerificationFailed:
+            "The privileged installation could not be verified."
         case .invalidHelperArguments:
             "Invalid privileged helper arguments."
         case .invalidProcessOutput(let executable, let stream):

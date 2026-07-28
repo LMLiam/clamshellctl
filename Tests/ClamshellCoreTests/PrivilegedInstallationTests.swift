@@ -44,6 +44,7 @@ struct PrivilegedInstallationTests {
         #expect(
             log.operations == [
                 .isRegularFile(source),
+                .isRegularFile(PrivilegedPaths.helper),
                 .copy(source: source, destination: helperTemporary),
                 .setOwner(path: helperTemporary, userID: 0, groupID: 0),
                 .setPermissions(path: helperTemporary, permissions: 0o755),
@@ -52,6 +53,7 @@ struct PrivilegedInstallationTests {
                     contents: try SudoersPolicy(username: "liam").contents,
                     path: policyTemporary
                 ),
+                .setOwner(path: policyTemporary, userID: 0, groupID: 0),
                 .setPermissions(path: policyTemporary, permissions: 0o440),
                 .run(
                     executable: "/usr/sbin/visudo",
@@ -60,6 +62,19 @@ struct PrivilegedInstallationTests {
                 .replace(
                     replacement: policyTemporary,
                     destination: PrivilegedPaths.sudoersPolicy
+                ),
+                .isRegularFile(PrivilegedPaths.helper),
+                .contentsEqual(
+                    firstPath: source,
+                    secondPath: PrivilegedPaths.helper
+                ),
+                .attributes(PrivilegedPaths.helper),
+                .isRegularFile(PrivilegedPaths.sudoersPolicy),
+                .readText(PrivilegedPaths.sudoersPolicy),
+                .attributes(PrivilegedPaths.sudoersPolicy),
+                .run(
+                    executable: "/usr/sbin/visudo",
+                    arguments: ["-cf", PrivilegedPaths.sudoersPolicy]
                 ),
             ]
         )
@@ -86,17 +101,54 @@ struct PrivilegedInstallationTests {
         _ = try installation.install()
 
         #expect(
-            Array(log.operations.prefix(3)) == [
+            Array(log.operations.prefix(4)) == [
                 .isRegularFile(
                     "/opt/homebrew/Cellar/clamshellctl/0.1.0/bin/clamshellctl-helper"
                 ),
                 .isRegularFile(source),
+                .isRegularFile(PrivilegedPaths.helper),
                 .copy(
                     source: source,
                     destination: "\(PrivilegedPaths.helper).installing.test"
                 ),
             ]
         )
+    }
+
+    @Test("recognises an already verified installation")
+    func alreadyInstalled() throws {
+        let log = InstallationOperationLog()
+        let source = "/tmp/build/clamshellctl-helper"
+        let fileSystem = RecordingInstallationFileSystem(
+            files: [source: "helper payload"],
+            log: log
+        )
+        let runner = InstallationRecordingRunner(result: .success, log: log)
+        let installation = PrivilegedInstallation(
+            fileSystem: fileSystem,
+            runner: runner,
+            effectiveUserID: 0,
+            environment: ["SUDO_USER": "liam"],
+            executablePath: "/tmp/build/clamshellctl",
+            temporarySuffix: "test"
+        )
+
+        let first = try installation.install()
+        let operationCount = log.operations.count
+        let second = try installation.install()
+        let repeatedOperations = Array(log.operations.dropFirst(operationCount))
+
+        #expect(first.didChange)
+        #expect(!second.didChange)
+        #expect(
+            !repeatedOperations.contains { operation in
+                switch operation {
+                case .copy, .write, .replace:
+                    true
+                default:
+                    false
+                }
+            })
     }
 
     @Test("rejects setup before file access when not running as root")
@@ -214,6 +266,9 @@ struct PrivilegedInstallationTests {
 private enum InstallationOperation: Equatable {
     case itemExists(String)
     case isRegularFile(String)
+    case contentsEqual(firstPath: String, secondPath: String)
+    case readText(String)
+    case attributes(String)
     case copy(source: String, destination: String)
     case setOwner(path: String, userID: UInt32, groupID: UInt32)
     case setPermissions(path: String, permissions: UInt16)
@@ -245,9 +300,15 @@ private final class RecordingInstallationFileSystem:
     private let lock = NSLock()
     private let log: InstallationOperationLog
     private var files: [String: String]
+    private var fileAttributes: [String: InstalledFileAttributes]
 
     init(files: [String: String], log: InstallationOperationLog) {
         self.files = files
+        fileAttributes = Dictionary(
+            uniqueKeysWithValues: files.keys.map {
+                ($0, InstalledFileAttributes(userID: 501, groupID: 20, permissions: 0o755))
+            }
+        )
         self.log = log
     }
 
@@ -261,6 +322,31 @@ private final class RecordingInstallationFileSystem:
         return lock.withLock { files[path] != nil }
     }
 
+    func contentsEqual(at firstPath: String, and secondPath: String) -> Bool {
+        log.append(.contentsEqual(firstPath: firstPath, secondPath: secondPath))
+        return lock.withLock { files[firstPath] == files[secondPath] }
+    }
+
+    func readText(at path: String) throws -> String {
+        log.append(.readText(path))
+        return try lock.withLock {
+            guard let contents = files[path] else {
+                throw ClamshellError.installationVerificationFailed
+            }
+            return contents
+        }
+    }
+
+    func attributes(at path: String) throws -> InstalledFileAttributes {
+        log.append(.attributes(path))
+        return try lock.withLock {
+            guard let attributes = fileAttributes[path] else {
+                throw ClamshellError.installationVerificationFailed
+            }
+            return attributes
+        }
+    }
+
     func copyItem(at source: String, to destination: String) throws {
         log.append(.copy(source: source, destination: destination))
         try lock.withLock {
@@ -268,6 +354,7 @@ private final class RecordingInstallationFileSystem:
                 throw ClamshellError.helperPayloadNotFound
             }
             files[destination] = contents
+            fileAttributes[destination] = fileAttributes[source]
         }
     }
 
@@ -275,15 +362,40 @@ private final class RecordingInstallationFileSystem:
         log.append(.write(contents: contents, path: path))
         lock.withLock {
             files[path] = contents
+            fileAttributes[path] = InstalledFileAttributes(
+                userID: 0,
+                groupID: 0,
+                permissions: 0o600
+            )
         }
     }
 
     func setOwner(userID: UInt32, groupID: UInt32, at path: String) throws {
         log.append(.setOwner(path: path, userID: userID, groupID: groupID))
+        try lock.withLock {
+            guard let attributes = fileAttributes[path] else {
+                throw ClamshellError.installationVerificationFailed
+            }
+            fileAttributes[path] = InstalledFileAttributes(
+                userID: userID,
+                groupID: groupID,
+                permissions: attributes.permissions
+            )
+        }
     }
 
     func setPermissions(_ permissions: UInt16, at path: String) throws {
         log.append(.setPermissions(path: path, permissions: permissions))
+        try lock.withLock {
+            guard let attributes = fileAttributes[path] else {
+                throw ClamshellError.installationVerificationFailed
+            }
+            fileAttributes[path] = InstalledFileAttributes(
+                userID: attributes.userID,
+                groupID: attributes.groupID,
+                permissions: permissions
+            )
+        }
     }
 
     func replaceItem(at destination: String, withItemAt replacement: String) throws {
@@ -293,13 +405,15 @@ private final class RecordingInstallationFileSystem:
                 throw ClamshellError.helperPayloadNotFound
             }
             files[destination] = contents
+            fileAttributes[destination] = fileAttributes.removeValue(forKey: replacement)
         }
     }
 
     func removeItem(at path: String) throws {
         log.append(.remove(path))
-        _ = lock.withLock {
-            files.removeValue(forKey: path)
+        lock.withLock {
+            _ = files.removeValue(forKey: path)
+            _ = fileAttributes.removeValue(forKey: path)
         }
     }
 
