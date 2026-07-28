@@ -46,25 +46,37 @@ public struct PrivilegedInstallation: Sendable {
     let payload = try helperPayloadPath()
 
     if try isConfigured(payload: payload, policy: policy) {
-      return InstallationResult(
-        helperPath: PrivilegedPaths.helper,
-        sudoersPolicyPath: PrivilegedPaths.sudoersPolicy,
-        didChange: false
-      )
+      return installationResult(didChange: false)
     }
 
-    try installHelper(payload: payload)
-    try installPolicy(policy)
+    let helperTemporary = try stageHelper(payload: payload)
+    var helperTemporaryExists = true
+    defer {
+      if helperTemporaryExists {
+        try? fileSystem.removeItem(at: helperTemporary)
+      }
+    }
+
+    let policyTemporary = try stagePolicy(policy)
+    var policyTemporaryExists = true
+    defer {
+      if policyTemporaryExists {
+        try? fileSystem.removeItem(at: policyTemporary)
+      }
+    }
+
+    try commit(
+      helperTemporary: helperTemporary,
+      policyTemporary: policyTemporary
+    )
+    policyTemporaryExists = false
+    helperTemporaryExists = false
 
     guard try isConfigured(payload: payload, policy: policy) else {
       throw ClamshellError.installationVerificationFailed
     }
 
-    return InstallationResult(
-      helperPath: PrivilegedPaths.helper,
-      sudoersPolicyPath: PrivilegedPaths.sudoersPolicy,
-      didChange: true
-    )
+    return installationResult(didChange: true)
   }
 
   /// Removes only the two managed installation paths and is safe to repeat.
@@ -84,7 +96,7 @@ public struct PrivilegedInstallation: Sendable {
     try requireAdministratorPrivileges(command: PrivilegedHelperClient.setupCommand)
   }
 
-  private func installHelper(payload: String) throws {
+  private func stageHelper(payload: String) throws -> String {
     let temporary = temporaryPath(for: PrivilegedPaths.helper)
     var temporaryExists = false
     defer {
@@ -97,11 +109,11 @@ public struct PrivilegedInstallation: Sendable {
     temporaryExists = true
     try fileSystem.setOwner(userID: 0, groupID: 0, at: temporary)
     try fileSystem.setPermissions(0o755, at: temporary)
-    try fileSystem.replaceItem(at: PrivilegedPaths.helper, withItemAt: temporary)
     temporaryExists = false
+    return temporary
   }
 
-  private func installPolicy(_ policy: SudoersPolicy) throws {
+  private func stagePolicy(_ policy: SudoersPolicy) throws -> String {
     let temporary = temporaryPath(for: PrivilegedPaths.sudoersPolicy)
     var temporaryExists = false
     defer {
@@ -120,8 +132,27 @@ public struct PrivilegedInstallation: Sendable {
       throw ClamshellError.sudoersValidationFailed
     }
 
-    try fileSystem.replaceItem(at: PrivilegedPaths.sudoersPolicy, withItemAt: temporary)
     temporaryExists = false
+    return temporary
+  }
+
+  private func commit(helperTemporary: String, policyTemporary: String) throws {
+    try fileSystem.replaceItem(
+      at: PrivilegedPaths.sudoersPolicy,
+      withItemAt: policyTemporary
+    )
+    try fileSystem.replaceItem(
+      at: PrivilegedPaths.helper,
+      withItemAt: helperTemporary
+    )
+  }
+
+  private func installationResult(didChange: Bool) -> InstallationResult {
+    InstallationResult(
+      helperPath: PrivilegedPaths.helper,
+      sudoersPolicyPath: PrivilegedPaths.sudoersPolicy,
+      didChange: didChange
+    )
   }
 
   private func requireAdministratorPrivileges(command: String) throws {

@@ -163,6 +163,7 @@ struct PrivilegedInstallationTests {
     let fileSystem = RecordingInstallationFileSystem(
       files: [
         source: "helper payload",
+        PrivilegedPaths.helper: "existing helper",
         PrivilegedPaths.sudoersPolicy: "existing policy",
       ],
       log: log
@@ -187,6 +188,7 @@ struct PrivilegedInstallationTests {
     #expect(throws: ClamshellError.sudoersValidationFailed) {
       try installation.install()
     }
+    #expect(fileSystem.contents(at: PrivilegedPaths.helper) == "existing helper")
     #expect(fileSystem.contents(at: PrivilegedPaths.sudoersPolicy) == "existing policy")
     #expect(
       !log.operations.contains(
@@ -239,7 +241,6 @@ struct PrivilegedInstallationTests {
       .copy(source: source, destination: helperTemporary),
       .setOwner(path: helperTemporary, userID: 0, groupID: 0),
       .setPermissions(path: helperTemporary, permissions: 0o755),
-      .replace(replacement: helperTemporary, destination: PrivilegedPaths.helper),
       .write(contents: policyContents, path: policyTemporary),
       .setOwner(path: policyTemporary, userID: 0, groupID: 0),
       .setPermissions(path: policyTemporary, permissions: 0o440),
@@ -248,6 +249,7 @@ struct PrivilegedInstallationTests {
         replacement: policyTemporary,
         destination: PrivilegedPaths.sudoersPolicy
       ),
+      .replace(replacement: helperTemporary, destination: PrivilegedPaths.helper),
       .isRegularFile(PrivilegedPaths.helper),
       .contentsEqual(firstPath: source, secondPath: PrivilegedPaths.helper),
       .attributes(PrivilegedPaths.helper),
