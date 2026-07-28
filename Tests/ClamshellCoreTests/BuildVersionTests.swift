@@ -1,4 +1,5 @@
 import Testing
+
 @testable import ClamshellCore
 
 @Suite("Build version")
