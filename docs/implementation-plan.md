@@ -1,10 +1,10 @@
 # clamshellctl MVP Implementation Plan
 
-**Goal:** Build, verify, publish, and distribute a secure Swift CLI for controlling battery clamshell mode on macOS.
+**Goal:** Build, verify, publish, and distribute a secure Swift CLI plus an optional self-contained macOS Control Centre companion for controlling battery clamshell mode.
 
-**Architecture:** A pure `ClamshellCore` module owns parsing, decisions, file generation, and timer rules. Thin `ClamshellCLI` and `ClamshellHelper` executables compose those rules with Foundation-backed process and file-system adapters. Homebrew installs both products, while one explicit privileged setup command installs the immutable helper and narrow sudoers policy.
+**Architecture:** A pure `ClamshellCore` module owns parsing, decisions, file generation, timer rules, and the narrow helper client. Thin CLI, helper, app, and WidgetKit control targets compose those rules with Foundation-backed platform adapters. Homebrew installs the CLI path; an ad-hoc-signed DMG packages the app, control extension, CLI, and helper payload without requiring Homebrew.
 
-**Tech stack:** Swift 6, Swift Package Manager, Swift Testing, Apple Swift Argument Parser 1.8, macOS `pmset`, `sudo`, `launchd`, GitHub Actions, release-please v5, and Homebrew.
+**Tech stack:** Swift 6.3, Swift Package Manager, Swift Testing, SwiftUI, WidgetKit, App Intents, XcodeGen, Apple Swift Argument Parser 1.8, macOS `pmset`, `sudo`, `launchd`, GitHub Actions, release-please v5, Homebrew, and `hdiutil`.
 
 **Working convention:** Complete tasks in order. Develop behaviour test-first, stage explicit paths, and use `verb(area): description` commit messages. Never run privileged integration tests in CI or mutate the developer Mac unless a step is marked as a manual acceptance test.
 
@@ -32,9 +32,22 @@ Sources/ClamshellCLI/ClamshellCommand.swift        Root ArgumentParser command a
 Sources/ClamshellCLI/Commands/*.swift              One public command per file
 Sources/ClamshellCLI/Console.swift                 Quiet-aware stdout and stderr rendering
 Sources/ClamshellHelper/ClamshellHelper.swift      Minimal privileged executable entry point
+App/ClamshellApp/ClamshellApp.swift               Setup-only SwiftUI application entry point
+App/ClamshellApp/SetupView.swift                  First-run, diagnostics, and removal interface
+App/ClamshellApp/SetupModel.swift                 Testable companion setup state and actions
+App/ClamshellApp/Info.plist                       Background-style app bundle metadata
+App/ClamshellControl/ClamshellControlBundle.swift WidgetKit extension entry point
+App/ClamshellControl/BatteryClamshellControl.swift Stateful Control Centre toggle
+App/ClamshellControl/SetBatteryClamshellIntent.swift Exact-state App Intent action
+App/ClamshellControl/Info.plist                    WidgetKit extension metadata
+App/ClamshellAppTests/*.swift                     Companion model tests
+App/ClamshellControlTests/*.swift                 Control model tests
 Tests/ClamshellCoreTests/*.swift                   Swift Testing suites by responsibility
 Tests/ClamshellCLITests/*.swift                    Black-box CLI tests without privilege changes
-Shortcuts/Toggle Battery Clamshell Mode.shortcut  Importable Shortcut export
+project.yml                                        Deterministic XcodeGen app project definition
+scripts/embed-command-products.sh                 Bundle release CLI and helper payloads
+scripts/package-dmg.sh                             Build the ad-hoc-signed release DMG
+Tests/Scripts/run-dmg-packaging-tests.sh           DMG structure and input validation tests
 scripts/generate-homebrew-formula.sh              Deterministic formula generation
 scripts/validate-conventional-title.sh            Pull-request title validation
 .github/workflows/ci.yml                           macOS build and test checks
@@ -228,7 +241,7 @@ Expected: `main` tracks `origin/main`, the repository is public, and the design 
 
 - [ ] **Step 6: Create issue labels and issue-ready milestones**
 
-Create labels `area: cli`, `area: privilege`, `area: timer`, `area: shortcut`, `area: docs`, `area: release`, `area: homebrew`, `type: feature`, and `type: maintenance`. Create one issue for each remaining phase in this plan. Each issue body must state the end goal, acceptance criteria, owned files, dependencies, verification commands, and the corresponding plan tasks.
+Create labels `area: cli`, `area: privilege`, `area: timer`, `area: app`, `area: control`, `area: dmg`, `area: docs`, `area: release`, `area: homebrew`, `type: feature`, and `type: maintenance`. Create one issue for each remaining phase in this plan. Each issue body must state the end goal, acceptance criteria, owned files, dependencies, verification commands, and the corresponding plan tasks.
 
 ## Phase 2: Read-only state support
 
@@ -672,44 +685,398 @@ git add Sources/ClamshellCLI Tests/ClamshellCLITests
 git commit -m "feat(cli): support temporary clamshell enablement"
 ```
 
-## Phase 6: Shortcut and public documentation
+## Phase 6: Native Control Centre companion
 
-### Task 13: Package the working Shortcut
+### Task 13: Generate the companion project and app shell
 
 **Files:**
 
-- Create: `Shortcuts/Toggle Battery Clamshell Mode.shortcut`
-- Create: `Shortcuts/README.md`
+- Create: `project.yml`
+- Create: `App/ClamshellApp/ClamshellApp.swift`
+- Create: `App/ClamshellApp/SetupView.swift`
+- Create: `App/ClamshellApp/Info.plist`
+- Create: `App/ClamshellControl/ClamshellControlBundle.swift`
+- Create: `App/ClamshellControl/BatteryClamshellControl.swift`
+- Create: `App/ClamshellControl/SetBatteryClamshellIntent.swift`
+- Create: `App/ClamshellControl/Info.plist`
+- Modify: `.gitignore`
 
-- [ ] **Step 1: Export the proven local Shortcut**
+- [ ] **Step 1: Add the deterministic Xcode project definition**
 
-In Shortcuts, open `Toggle Battery Clamshell Mode`, confirm its shell action resolves `/opt/homebrew/bin/clamshellctl` first and `/usr/local/bin/clamshellctl` second, and exports a failure message if neither exists. Run `toggle --quiet`. Export the Shortcut to the exact repository path.
+Install XcodeGen with `brew install xcodegen`. Define one macOS 26 application, one embedded WidgetKit extension, and one unit-test target in `project.yml`. Link both production targets to the local `ClamshellCore` package product. Use bundle identifiers `uk.co.lmliam.clamshell` and `uk.co.lmliam.clamshell.control`, set `LSUIElement` to `true`, and use manual ad-hoc signing with no development team.
 
-- [ ] **Step 2: Sign the export for sharing**
+```yaml
+name: Clamshell
+options:
+  deploymentTarget:
+    macOS: "26.0"
+packages:
+  ClamshellKit:
+    path: .
+targets:
+  ClamshellApp:
+    type: application
+    platform: macOS
+    sources: [App/ClamshellApp]
+    info:
+      path: App/ClamshellApp/Info.plist
+      properties:
+        CFBundleDisplayName: Clamshell
+        LSUIElement: true
+    dependencies:
+      - package: ClamshellKit
+        product: ClamshellCore
+      - target: ClamshellControl
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: uk.co.lmliam.clamshell
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+        ARCHS: "arm64 x86_64"
+        ONLY_ACTIVE_ARCH: NO
+        MARKETING_VERSION: 0.1.0
+        CURRENT_PROJECT_VERSION: 1
+  ClamshellControl:
+    type: app-extension
+    platform: macOS
+    sources: [App/ClamshellControl]
+    info:
+      path: App/ClamshellControl/Info.plist
+      properties:
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    dependencies:
+      - package: ClamshellKit
+        product: ClamshellCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: uk.co.lmliam.clamshell.control
+        CODE_SIGN_STYLE: Manual
+        CODE_SIGN_IDENTITY: "-"
+        DEVELOPMENT_TEAM: ""
+        ARCHS: "arm64 x86_64"
+        ONLY_ACTIVE_ARCH: NO
+        MARKETING_VERSION: 0.1.0
+        CURRENT_PROJECT_VERSION: 1
+  ClamshellAppTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [App/ClamshellAppTests]
+    dependencies:
+      - target: ClamshellApp
+  ClamshellControlTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources: [App/ClamshellControlTests]
+    dependencies:
+      - target: ClamshellControl
+```
+
+- [ ] **Step 2: Add the smallest compiling app and control**
+
+Create an `@main` SwiftUI app with a single setup window. Create a WidgetKit `WidgetBundle` containing `BatteryClamshellControl`. Initially return `false` from the value provider and make the intent return `.result()` without mutation; this step proves project composition only.
+
+```swift
+import SwiftUI
+
+@main
+struct ClamshellApp: App {
+    var body: some Scene {
+        Window("Clamshell", id: "setup") {
+            SetupView()
+        }
+    }
+}
+
+struct SetupView: View {
+    var body: some View {
+        Text("Clamshell setup")
+            .padding()
+    }
+}
+```
+
+```swift
+import AppIntents
+import SwiftUI
+import WidgetKit
+
+@main
+struct ClamshellControlBundle: WidgetBundle {
+    var body: some Widget {
+        BatteryClamshellControl()
+    }
+}
+
+struct BatteryClamshellControl: ControlWidget {
+    static let kind = "uk.co.lmliam.clamshell.control.battery"
+
+    var body: some ControlWidgetConfiguration {
+        StaticControlConfiguration(kind: Self.kind, provider: Provider()) {
+            isEnabled in
+            ControlWidgetToggle(
+                "Battery Clamshell Mode",
+                isOn: isEnabled,
+                action: SetBatteryClamshellIntent()
+            )
+        }
+    }
+
+    struct Provider: ControlValueProvider {
+        let previewValue = false
+
+        func currentValue() async throws -> Bool {
+            false
+        }
+    }
+}
+
+struct SetBatteryClamshellIntent: SetValueIntent {
+    static let title: LocalizedStringResource = "Set battery clamshell mode"
+
+    @Parameter(title: "Enabled")
+    var value: Bool
+
+    func perform() async throws -> some IntentResult {
+        .result()
+    }
+}
+```
+
+- [ ] **Step 3: Generate and build the app**
 
 Run:
 
 ```bash
-shortcuts sign \
-  --mode anyone \
-  --input "Shortcuts/Toggle Battery Clamshell Mode.shortcut" \
-  --output "Shortcuts/Toggle Battery Clamshell Mode.signed.shortcut"
+xcodegen generate
+xcodebuild \
+  -project Clamshell.xcodeproj \
+  -scheme ClamshellApp \
+  -configuration Debug \
+  -destination 'platform=macOS' \
+  CODE_SIGN_IDENTITY=- \
+  DEVELOPMENT_TEAM= \
+  build
 ```
 
-Replace the unsigned export with the signed output only after importing the signed copy on the same Mac and confirming it still runs. Record the import and Control Centre steps in `Shortcuts/README.md`.
+Expected: XcodeGen produces the project and Xcode builds an ad-hoc-signed app containing `ClamshellControl.appex`. Add `Clamshell.xcodeproj/` to `.gitignore`; `project.yml` is the source of truth.
 
-- [ ] **Step 3: Verify repository safety**
-
-Inspect the signed Shortcut in the Shortcuts app. Confirm it contains no personal paths, identifiers, secrets, unrelated actions, or network requests.
-
-- [ ] **Step 4: Commit the Shortcut**
+- [ ] **Step 4: Commit the project shell**
 
 ```bash
-git add Shortcuts
-git commit -m "feat(shortcut): add Control Centre toggle"
+git add .gitignore project.yml App/ClamshellApp App/ClamshellControl
+git commit -m "build(app): add generated companion project"
 ```
 
-### Task 14: Complete user and contributor documentation
+### Task 14: Prove the unsigned Control Centre boundary
+
+**Files:**
+
+- Create: `App/ClamshellControl/ControlModel.swift`
+- Create: `App/ClamshellControlTests/ControlModelTests.swift`
+- Modify: `App/ClamshellControl/BatteryClamshellControl.swift`
+- Modify: `App/ClamshellControl/SetBatteryClamshellIntent.swift`
+- Create: `docs/control-feasibility-test.md`
+
+- [ ] **Step 1: Test exact-state control requests**
+
+Use fakes to prove that requesting the current state performs no mutation, requesting a different state invokes exactly one helper operation, helper failure propagates, and the final state is verified before success.
+
+```swift
+import Testing
+@testable import ClamshellControl
+import ClamshellCore
+
+private final class RecordingPower: @unchecked Sendable,
+    PowerStateReading, PowerStateWriting {
+    var states: [ClamshellState]
+    var requestedStates: [ClamshellState] = []
+
+    init(states: [ClamshellState]) {
+        self.states = states
+    }
+
+    func currentState() throws -> ClamshellState {
+        states.removeFirst()
+    }
+
+    func setState(_ state: ClamshellState) throws {
+        requestedStates.append(state)
+    }
+}
+
+@Test("enables through the helper and verifies the result")
+func enablesAndVerifies() throws {
+    let power = RecordingPower(states: [.disabled, .enabled])
+    let model = ControlModel(stateReader: power, stateWriter: power)
+
+    try model.setValue(true)
+
+    #expect(power.requestedStates == [.enabled])
+    #expect(power.states.isEmpty)
+}
+```
+
+- [ ] **Step 2: Run the test and confirm the missing service**
+
+Run: `xcodebuild -project Clamshell.xcodeproj -scheme ClamshellControlTests -destination 'platform=macOS' test`
+
+Expected: compilation fails because `ControlModel` does not exist.
+
+- [ ] **Step 3: Implement the control model by composing the shared service**
+
+Define `ControlModel` with injected `PowerStateReading` and `PowerStateWriting` dependencies. `currentValue()` maps `.enabled` to `true`; `setValue(_:)` maps the Boolean to `ClamshellState` and delegates to Task 5's `ClamshellService`. Production composition uses `PowerSettingsClient` for reads and `PrivilegedHelperClient` for writes, so the control reuses the same idempotency, exact sudo invocation, and final verification as the CLI.
+
+- [ ] **Step 4: Connect the WidgetKit value and intent**
+
+The provider calls `ControlModel.live.currentValue()`. The `SetValueIntent` calls `ControlModel.live.setValue(_:)`, declares background support, requests the value supplied by WidgetKit, and reloads the control only after verified success.
+
+```swift
+struct SetBatteryClamshellIntent: SetValueIntent {
+    static let title: LocalizedStringResource = "Set battery clamshell mode"
+    static var supportedModes: IntentModes { .background }
+
+    @Parameter(title: "Enabled")
+    var value: Bool
+
+    func perform() async throws -> some IntentResult {
+        try ControlModel.live.setValue(value)
+        ControlCenter.shared.reloadControls(
+            ofKind: BatteryClamshellControl.kind
+        )
+        return .result()
+    }
+}
+```
+
+- [ ] **Step 5: Run the mandatory clean-account feasibility test**
+
+Build Release with `CODE_SIGN_IDENTITY=-`, copy `Clamshell.app` to `/Applications`, trigger Gatekeeper quarantine with a locally created DMG, approve the app through Privacy & Security, and add its control to Control Centre. Verify inactive state, enable, active state, disable, state changes made through the CLI, and behaviour after replacing the app with a second ad-hoc-signed build.
+
+Record the exact build, installation, `codesign`, `spctl`, helper, and `pmset` observations in `docs/control-feasibility-test.md`. Do not record account identifiers or passwords. If extension discovery, read-only `pmset`, helper invocation, state reconciliation, or update persistence fails, stop companion work and leave DMG publication disabled; the CLI plan continues independently.
+
+- [ ] **Step 6: Verify and commit the proven boundary**
+
+Run:
+
+```bash
+xcodebuild -project Clamshell.xcodeproj -scheme ClamshellControlTests -configuration Release -destination 'platform=macOS' CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= test
+xcodebuild -project Clamshell.xcodeproj -scheme ClamshellApp -configuration Release -destination 'platform=macOS' CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= build
+```
+
+Expected: automated tests pass and the feasibility record contains a pass for every mandatory observation.
+
+```bash
+git add App/ClamshellControl App/ClamshellControlTests project.yml docs/control-feasibility-test.md
+git commit -m "feat(control): add verified Control Centre toggle"
+```
+
+### Task 15: Add companion setup and optional CLI exposure
+
+**Files:**
+
+- Create: `App/ClamshellApp/SetupModel.swift`
+- Create: `App/ClamshellAppTests/SetupModelTests.swift`
+- Modify: `App/ClamshellApp/SetupView.swift`
+- Modify: `Sources/ClamshellCore/PrivilegedInstallation.swift`
+- Modify: `Sources/ClamshellCLI/Commands/SetupCommand.swift`
+- Modify: `Sources/ClamshellCLI/Commands/UninstallCommand.swift`
+
+- [ ] **Step 1: Test setup presentation states**
+
+Test `.needsSetup`, `.ready`, `.invalidHelper`, and `.missingBundlePayload`. Prove that setup requests administrator authorisation once, CLI exposure creates only `/usr/local/bin/clamshellctl`, removal deletes the symlink only when it resolves inside `Clamshell.app`, and diagnostic refresh never mutates system state.
+
+```swift
+@Test("does not remove an unrelated command")
+func preservesUnrelatedCommand() async throws {
+    let fixture = SetupModelFixture(cliLinkTarget: "/tmp/not-clamshellctl")
+
+    try await fixture.model.removePrivilegedSetup()
+
+    #expect(fixture.files.removedPaths.contains("/usr/local/bin/clamshellctl") == false)
+}
+```
+
+- [ ] **Step 2: Run the tests and confirm missing setup types**
+
+Run:
+
+```bash
+xcodegen generate
+xcodebuild -project Clamshell.xcodeproj -scheme ClamshellApp -destination 'platform=macOS' test
+```
+
+Expected: compilation fails because `SetupModel` and its injected boundaries do not exist.
+
+- [ ] **Step 3: Implement the setup model and view**
+
+`SetupModel` owns display state only and depends on protocols for diagnostics, administrator-authorised setup, CLI-link installation, and removal. `SetupView` shows the current helper status, an explicit **Set Up** button, an opt-in **Install terminal command** toggle, Control Centre placement instructions, and **Remove privileged components**. It never displays or stores a password.
+
+First-run setup invokes the app-bundled `clamshellctl setup` through macOS's administrator-authorisation dialog. Resolve the app bundle before authorisation, reject a bundle outside `/Applications`, construct the command only from allowlisted arguments and shell-quoted absolute paths, and reuse Task 9's setup validation rather than duplicating file-writing rules. Never interpolate free-form user input into the authorised command.
+
+- [ ] **Step 4: Verify setup and removal manually**
+
+On a test account, confirm one authorisation prompt, exact helper ownership and modes, valid sudoers syntax, optional CLI symlink target, correct diagnostics after relaunch, safe repeated setup, safe repeated removal, and preservation of an unrelated `/usr/local/bin/clamshellctl` fixture.
+
+- [ ] **Step 5: Commit companion setup**
+
+```bash
+git add App/ClamshellApp App/ClamshellAppTests Sources/ClamshellCore/PrivilegedInstallation.swift Sources/ClamshellCLI/Commands/SetupCommand.swift Sources/ClamshellCLI/Commands/UninstallCommand.swift
+git commit -m "feat(app): add privileged setup experience"
+```
+
+### Task 16: Bundle command products and package the DMG
+
+**Files:**
+
+- Create: `scripts/embed-command-products.sh`
+- Create: `scripts/package-dmg.sh`
+- Create: `Tests/Scripts/run-dmg-packaging-tests.sh`
+- Modify: `project.yml`
+
+- [ ] **Step 1: Test packaging input validation**
+
+The shell test supplies temporary fixture app bundles and proves rejection of a malformed version, missing CLI, missing helper, missing extension, non-ad-hoc nested signature, and an output path outside the supplied directory. It also proves that a valid fixture creates exactly `clamshellctl-v1.2.3.dmg` containing `Clamshell.app` and an `/Applications` symlink.
+
+- [ ] **Step 2: Run the test and confirm the missing scripts**
+
+Run: `bash Tests/Scripts/run-dmg-packaging-tests.sh`
+
+Expected: failure because `scripts/package-dmg.sh` does not exist.
+
+- [ ] **Step 3: Implement deterministic embedding and packaging**
+
+`embed-command-products.sh` copies the universal release `clamshellctl` to `Contents/MacOS/clamshellctl` and the universal helper payload to `Contents/Resources/clamshellctl-helper`, then verifies both are executable and contain `arm64` and `x86_64` slices with `lipo -verify_arch`. `package-dmg.sh` accepts only `VERSION` and `OUTPUT_DIRECTORY`, builds SwiftPM release products for both architectures, generates the Xcode project, builds Release with `ARCHS='arm64 x86_64'`, `ONLY_ACTIVE_ARCH=NO`, and ad-hoc signing, verifies nested code with `codesign --verify --deep --strict`, stages only the app and `/Applications` symlink, creates a compressed read-only DMG with `hdiutil`, remounts it read-only, and verifies its contents before returning success.
+
+- [ ] **Step 4: Verify the real artefact**
+
+Run:
+
+```bash
+bash Tests/Scripts/run-dmg-packaging-tests.sh
+bash scripts/package-dmg.sh 0.1.0 .build/releases
+hdiutil verify .build/releases/clamshellctl-v0.1.0.dmg
+spctl --assess --type open --context context:primary-signature .build/releases/clamshellctl-v0.1.0.dmg || true
+```
+
+Expected: script tests and `hdiutil` pass. `spctl` rejects the intentionally unnotarised download artefact, matching the documented Gatekeeper flow.
+
+- [ ] **Step 5: Produce and verify the checksum**
+
+Write `clamshellctl-v0.1.0.dmg.sha256` using `shasum -a 256`, verify it with `shasum -a 256 -c`, and assert the checksum file contains only the artefact basename rather than a local absolute path.
+
+- [ ] **Step 6: Commit DMG packaging**
+
+```bash
+git add project.yml scripts/embed-command-products.sh scripts/package-dmg.sh Tests/Scripts/run-dmg-packaging-tests.sh
+git commit -m "build(dmg): package self-contained companion"
+```
+
+## Phase 7: Public documentation
+
+### Task 17: Complete user and contributor documentation
 
 **Files:**
 
@@ -721,7 +1088,7 @@ git commit -m "feat(shortcut): add Control Centre toggle"
 
 - [ ] **Step 1: Write the complete README**
 
-Cover purpose, warning and scope, requirements, Homebrew installation, explicit sudo setup, commands, duration grammar, Shortcut import, Control Centre placement, status limitations, troubleshooting, uninstall, security design, development, licence, and acknowledgements. State that the tool changes only the Battery Power `disablesleep` value.
+Cover purpose, warning and scope, separate Homebrew and DMG installation paths, macOS 13 CLI and macOS 26 companion requirements, explicit privileged setup, commands, duration grammar, Gatekeeper `Open Anyway`, Control Centre placement, active and inactive appearance, optional terminal command, troubleshooting, complete removal, security design, development, licence, and acknowledgements. State that the tool changes only the Battery Power `disablesleep` value and that the DMG is not notarised.
 
 - [ ] **Step 2: Write maintenance policies**
 
@@ -736,13 +1103,13 @@ Expected: no Markdown errors. Manually verify every relative link and ensure no 
 - [ ] **Step 4: Commit documentation**
 
 ```bash
-git add .markdownlint-cli2.jsonc README.md CONTRIBUTING.md SECURITY.md SUPPORT.md docs Shortcuts/README.md
+git add .markdownlint-cli2.jsonc README.md CONTRIBUTING.md SECURITY.md SUPPORT.md docs
 git commit -m "docs(project): document installation and maintenance"
 ```
 
-## Phase 7: CI and automated releases
+## Phase 8: CI and automated releases
 
-### Task 15: Add build, test, format, and PR-title checks
+### Task 18: Add build, test, format, and PR-title checks
 
 **Files:**
 
@@ -761,7 +1128,7 @@ Use a portable anchored regular expression for the allowed Conventional Commit v
 
 - [ ] **Step 3: Add least-privilege workflows**
 
-`ci.yml` runs on pushes to `main` and pull requests, uses a macOS runner, checks out pinned action SHAs, runs `swift package resolve`, `swift format lint --recursive --strict .`, `swift test`, and `swift build -c release`. It grants `contents: read` only.
+`ci.yml` runs on pushes to `main` and pull requests, uses a macOS runner, checks out pinned action SHAs, installs XcodeGen, runs `swift package resolve`, `swift format lint --recursive --strict .`, `swift test`, `swift build -c release`, `xcodegen generate`, and an ad-hoc-signed `xcodebuild` for `ClamshellApp`. It grants `contents: read` only.
 
 `pr.yml` validates the pull-request title without checking out or executing pull-request code. It grants `pull-requests: read` only.
 
@@ -773,6 +1140,8 @@ Run:
 bash Tests/Scripts/run-title-tests.sh
 swift format lint --recursive --strict .
 swift test
+xcodegen generate
+xcodebuild -project Clamshell.xcodeproj -scheme ClamshellApp -configuration Debug -destination 'platform=macOS' CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= build
 actionlint
 ```
 
@@ -785,7 +1154,7 @@ git add .github/workflows scripts Tests/Scripts
 git commit -m "ci(checks): verify Swift and pull-request quality"
 ```
 
-### Task 16: Configure release-please
+### Task 19: Configure release-please
 
 **Files:**
 
@@ -797,17 +1166,19 @@ git commit -m "ci(checks): verify Swift and pull-request quality"
 
 - [ ] **Step 1: Add manifest configuration**
 
-Use `release-type: simple`, root package `.`, `include-v-in-tag: true`, `include-component-in-tag: false`, `bump-minor-pre-major: true`, and `bump-patch-for-minor-pre-major: false`. Configure the generic updater for `Sources/ClamshellCore/BuildVersion.swift`. Use the agreed visible changelog sections and hide tests and routine chores.
+Use `release-type: simple`, root package `.`, `include-v-in-tag: true`, `include-component-in-tag: false`, `bump-minor-pre-major: true`, and `bump-patch-for-minor-pre-major: false`. Configure generic updaters for `Sources/ClamshellCore/BuildVersion.swift` and both `MARKETING_VERSION` entries in `project.yml`. Use the agreed visible changelog sections and hide tests and routine chores.
 
-Initial manifest content is `{}` and the root package sets `initial-version: "0.1.0"`; the first release PR therefore targets `0.1.0`. `version.txt` starts at `0.1.0` and must remain identical to `BuildVersion.current`. The consistency script compares the manifest only after release-please has recorded a root version.
+Initial manifest content is `{}` and the root package sets `initial-version: "0.1.0"`; the first release PR therefore targets `0.1.0`. `version.txt` starts at `0.1.0` and must remain identical to `BuildVersion.current` and the two app `MARKETING_VERSION` values. The consistency script compares the manifest only after release-please has recorded a root version.
 
 - [ ] **Step 2: Add configuration validation**
 
-Run release-please in dry-run mode against the local configuration and assert the schema accepts every property. Add a test script that extracts `version.txt`, the Swift version literal, and the manifest version when applicable and reports mismatches.
+Run release-please in dry-run mode against the local configuration and assert the schema accepts every property. Add a test script that extracts `version.txt`, the Swift version literal, both app marketing-version values, and the manifest version when applicable and reports mismatches.
 
 - [ ] **Step 3: Add the release job**
 
 Mirror Kotventure's least-privilege pattern: top-level `permissions: {}`, job-scoped `contents: write`, `issues: write`, and `pull-requests: write`, ten-minute timeout, concurrency by workflow and ref, and release-please v5 pinned to the currently approved commit SHA. Use `${{ secrets.RELEASE_PLEASE_TOKEN || secrets.GITHUB_TOKEN }}`.
+
+Expose `release_created`, `tag_name`, and `version`. When `release_created` is true, an output-gated macOS job installs XcodeGen, checks out the exact tag, runs `scripts/package-dmg.sh`, verifies the DMG and checksum, and uploads both to the existing GitHub Release. Grant only `contents: write`; do not configure signing secrets or claim notarisation.
 
 - [ ] **Step 4: Verify and commit**
 
@@ -816,13 +1187,13 @@ Run: `actionlint && bash scripts/check-version-consistency.sh`
 Expected: both checks pass.
 
 ```bash
-git add .github/workflows/release.yml release-please-config.json .release-please-manifest.json CHANGELOG.md version.txt Sources/ClamshellCore/BuildVersion.swift scripts/check-version-consistency.sh
+git add .github/workflows/release.yml release-please-config.json .release-please-manifest.json CHANGELOG.md version.txt project.yml Sources/ClamshellCore/BuildVersion.swift scripts/check-version-consistency.sh
 git commit -m "ci(release): automate version pull requests"
 ```
 
-## Phase 8: Homebrew publication
+## Phase 9: Homebrew publication
 
-### Task 17: Generate and test the Homebrew formula
+### Task 20: Generate and test the Homebrew formula
 
 **Files:**
 
@@ -858,7 +1229,7 @@ git add Formula scripts/generate-homebrew-formula.sh Tests/Scripts
 git commit -m "feat(homebrew): add source-build formula"
 ```
 
-### Task 18: Publish formula updates after releases
+### Task 21: Publish formula updates after releases
 
 **Files:**
 
@@ -888,9 +1259,9 @@ git add .github/workflows/release.yml scripts/publish-homebrew-formula.sh Tests/
 git commit -m "ci(homebrew): publish released formula to tap"
 ```
 
-## Phase 9: End-to-end verification and launch
+## Phase 10: End-to-end verification and launch
 
-### Task 19: Run the privileged acceptance matrix
+### Task 22: Run the privileged acceptance matrix
 
 **Files:**
 
@@ -906,7 +1277,7 @@ Run the formula build, then the explicit setup command. Verify `root:wheel` owne
 
 - [ ] **Step 3: Exercise behaviour on battery and AC**
 
-Verify status, enable, repeated enable, toggle, disable, repeated disable, quiet output, malformed duration rejection, timer replacement, automatic disable, missed-deadline recovery after sleep, Shortcut toggle, and Control Centre invocation. Confirm the AC Power section remains byte-for-byte unchanged across every mutation.
+Verify status, enable, repeated enable, toggle, disable, repeated disable, quiet output, malformed duration rejection, timer replacement, automatic disable, missed-deadline recovery after sleep, Control Centre enable and disable, active and inactive rendering, and state reconciliation after CLI changes. Confirm the AC Power section remains byte-for-byte unchanged across every mutation.
 
 - [ ] **Step 4: Verify removal and recovery**
 
@@ -921,7 +1292,7 @@ git add docs/acceptance-test.md
 git commit -m "test(acceptance): verify macOS clamshell lifecycle"
 ```
 
-### Task 20: Harden repository settings and perform the first release
+### Task 23: Harden repository settings and perform the first release
 
 **Files:**
 
@@ -953,13 +1324,17 @@ brew install LMLiam/tap/clamshellctl
 
 Expected: Homebrew installs `0.1.0` from the public release. Perform setup, one enable/disable cycle, uninstall privileged components, and leave the machine disabled.
 
-- [ ] **Step 5: Update the GitHub profile repository**
+- [ ] **Step 5: Test the public DMG from scratch**
+
+Download the release DMG and checksum through the public GitHub Release URL, verify `shasum -a 256 -c`, mount it, drag `Clamshell.app` to `/Applications`, and follow only the published Gatekeeper instructions. Complete setup, add the toggle to Control Centre, verify one enable and disable cycle plus active and inactive appearance, expose the optional terminal command, remove privileged components, and delete the app. Confirm no helper, sudoers rule, or CLI symlink remains.
+
+- [ ] **Step 6: Update the GitHub profile repository**
 
 Add `clamshellctl` to `LMLiam/LMLiam` using the released repository URL, a one-sentence description, and the project logo or existing profile-card style. Validate Markdown rendering, commit as `docs(profile): feature clamshellctl`, and push the profile repository separately.
 
-- [ ] **Step 6: Mark the MVP complete**
+- [ ] **Step 7: Mark the MVP complete**
 
-Close the launch milestone only after the GitHub Release, Homebrew installation, Shortcut, profile link, and acceptance record are all verified. Create separate backlog issues for USB-C disconnect automation and any future native Control Widget; do not fold them into v1.
+Close the launch milestone only after the GitHub Release, public DMG, Homebrew installation, Control Centre companion, profile link, and acceptance record are all verified. Create a separate backlog issue for USB-C disconnect automation; do not fold it into v1.
 
 ## Final verification gate
 
@@ -969,13 +1344,16 @@ Before declaring the MVP complete, run:
 swift format lint --recursive --strict .
 swift test
 swift build -c release
+xcodegen generate
+xcodebuild -project Clamshell.xcodeproj -scheme ClamshellApp -configuration Release -destination 'platform=macOS' CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= test
 actionlint
 bash scripts/check-version-consistency.sh
 bash Tests/Scripts/run-title-tests.sh
+bash Tests/Scripts/run-dmg-packaging-tests.sh
 bash Tests/Scripts/run-formula-generator-tests.sh
 bash Tests/Scripts/run-publish-formula-tests.sh
 git diff --check
 git status --short
 ```
 
-Expected: every command exits zero and `git status --short` prints nothing. Then repeat the public Homebrew smoke test and confirm `pmset -g custom` shows battery clamshell mode disabled and an unchanged AC Power section.
+Expected: every command exits zero and `git status --short` prints nothing. Then repeat both public installation smoke tests and confirm `pmset -g custom` shows battery clamshell mode disabled, the AC Power section is unchanged, and DMG removal leaves no helper, sudoers rule, or CLI symlink.

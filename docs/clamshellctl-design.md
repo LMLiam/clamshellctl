@@ -168,7 +168,7 @@ clamshellctl/
 ├── App/
 │   ├── ClamshellApp/
 │   └── ClamshellControl/
-├── Clamshell.xcodeproj/
+├── project.yml
 ├── Tests/
 │   └── ClamshellCoreTests/
 ├── docs/
@@ -187,6 +187,8 @@ clamshellctl/
 ```
 
 The approved transparent artwork is stored as `docs/assets/clamshellctl.png` and used near the top of the README.
+
+`project.yml` is the reviewable source of truth for the native targets. XcodeGen creates `Clamshell.xcodeproj` locally and in CI; the generated project is not committed.
 
 ## Testing and verification
 
