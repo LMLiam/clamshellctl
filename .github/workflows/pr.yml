@@ -23,8 +23,20 @@ jobs:
           persist-credentials: false
           ref: ${{ github.event.pull_request.base.sha }}
       - env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          validator="$RUNNER_TEMP/check-conventional-subject.sh"
+          if git cat-file -e "$BASE_SHA:scripts/check-conventional-subject.sh" 2>/dev/null; then
+            git show "$BASE_SHA:scripts/check-conventional-subject.sh" > "$validator"
+          else
+            # shellcheck disable=SC2016
+            printf '%s\n' '#!/bin/bash' 'set -euo pipefail' 'subject="${1:-}"' "verbs='feat|fix|docs|test|build|ci|refactor|perf|style|chore|revert'" 'pattern="^(feat|fix|docs|test|build|ci|refactor|perf|style|chore|revert)[(][a-z0-9][a-z0-9-]*[)]: .+"' 'if [[ ! "$subject" =~ $pattern ]]; then' '  echo "Expected verb(area): description, received: $subject" >&2' '  exit 1' 'fi' > "$validator"
+          fi
+          chmod +x "$validator"
+      - env:
           PR_TITLE: ${{ github.event.pull_request.title }}
-        run: scripts/check-conventional-subject.sh "$PR_TITLE"
+        run: >-
+          "$RUNNER_TEMP/check-conventional-subject.sh" "$PR_TITLE"
 
   commits:
     name: Commits
@@ -40,7 +52,12 @@ jobs:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           validator="$RUNNER_TEMP/check-conventional-subject.sh"
-          git show "$BASE_SHA:scripts/check-conventional-subject.sh" > "$validator"
+          if git cat-file -e "$BASE_SHA:scripts/check-conventional-subject.sh" 2>/dev/null; then
+            git show "$BASE_SHA:scripts/check-conventional-subject.sh" > "$validator"
+          else
+            # shellcheck disable=SC2016
+            printf '%s\n' '#!/bin/bash' 'set -euo pipefail' 'subject="${1:-}"' "verbs='feat|fix|docs|test|build|ci|refactor|perf|style|chore|revert'" 'pattern="^(feat|fix|docs|test|build|ci|refactor|perf|style|chore|revert)[(][a-z0-9][a-z0-9-]*[)]: .+"' 'if [[ ! "$subject" =~ $pattern ]]; then' '  echo "Expected verb(area): description, received: $subject" >&2' '  exit 1' 'fi' > "$validator"
+          fi
           chmod +x "$validator"
           while IFS= read -r subject; do
             "$validator" "$subject"

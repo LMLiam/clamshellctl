@@ -832,58 +832,38 @@ checks out the trusted base revision. The commit job checks out the pull
 request's head SHA with full history for the commit range, but extracts the
 validator from the trusted base revision before invoking it. The synthetic
 merge subject is never validated, and a pull request cannot alter the
-validator it uses. The bootstrap pull request that first adds the validator
-may require the maintainer's configured administrative bypass until the file
-exists on `main`.
+validator it uses. If the trusted base predates the validator, both jobs use a
+literal bootstrap fallback identical to the script being introduced; later
+pull requests use only the base-revision copy.
+
+The workflow uses the trusted-base validator materialization described above.
+Keep the bootstrap fallback literal identical to
+`scripts/check-conventional-subject.sh`; the abbreviated shape is:
 
 ```yaml
-name: PR
-
-on:
-  pull_request:
-    branches: [main]
-    types: [opened, edited, reopened, synchronize]
-
 concurrency:
   group: pr-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
-
 jobs:
   title:
-    name: Title
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@... # pinned SHA
         with:
-          persist-credentials: false
           ref: ${{ github.event.pull_request.base.sha }}
-      - env:
-          PR_TITLE: ${{ github.event.pull_request.title }}
-        run: scripts/check-conventional-subject.sh "$PR_TITLE"
+      - run: materialize trusted-base validator or the identical bootstrap rule
+      - run: $RUNNER_TEMP/check-conventional-subject.sh "$PR_TITLE"
 
   commits:
-    name: Commits
-    runs-on: ubuntu-latest
-    timeout-minutes: 5
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@... # pinned SHA
         with:
           fetch-depth: 0
-          persist-credentials: false
           ref: ${{ github.event.pull_request.head.sha }}
       - env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
-        run: |
-          validator="$RUNNER_TEMP/check-conventional-subject.sh"
-          git show "$BASE_SHA:scripts/check-conventional-subject.sh" > "$validator"
-          chmod +x "$validator"
-          while IFS= read -r subject; do
-            "$validator" "$subject"
-          done < <(git log --format=%s "$BASE_SHA..HEAD")
+        run: materialize trusted-base validator or the identical bootstrap rule
+      - run: apply the temporary validator to git log --format=%s "$BASE_SHA..HEAD"
 ```
 
 - [ ] **Step 3: Validate and commit the workflows**
