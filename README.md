@@ -4,6 +4,9 @@
 
 # clamshellctl
 
+[![CI](https://github.com/LMLiam/clamshellctl/actions/workflows/ci.yml/badge.svg)](https://github.com/LMLiam/clamshellctl/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/LMLiam/clamshellctl/actions/workflows/codeql.yml/badge.svg)](https://github.com/LMLiam/clamshellctl/actions/workflows/codeql.yml)
+
 Control battery clamshell mode on macOS.
 
 > [!IMPORTANT]
@@ -55,9 +58,20 @@ Requirements:
 Run the current checks with:
 
 ```bash
-swift test
-swift build -c release
+scripts/check.sh
 ```
+
+See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for setup, style, testing, and
+commit conventions.
+
+## Community
+
+- Use the [issue forms](https://github.com/LMLiam/clamshellctl/issues/new/choose)
+  for bugs and feature proposals.
+- Read [SUPPORT.md](.github/SUPPORT.md) before asking a usage question.
+- Report vulnerabilities through the private process in
+  [SECURITY.md](.github/SECURITY.md).
+- Follow the [Code of Conduct](.github/CODE_OF_CONDUCT.md) when participating.
 
 ## Licence
 
