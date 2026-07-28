@@ -48,9 +48,6 @@ opt_in_rules:
   - toggle_bool
   - unavailable_function
 
-analyzer_rules:
-  - unused_import
-
 closure_body_length:
   warning: 40
   error: 60
