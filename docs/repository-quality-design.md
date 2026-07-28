@@ -117,10 +117,11 @@ System operations remain injectable. Tests must not invoke real `pmset`,
 such as `Utils`, `Common`, or `Models` are prohibited.
 
 Access control is as narrow as target boundaries permit. Declarations exposed
-to the future app package product are public and have concise documentation.
-Other declarations remain internal or private. Documentation describes
-contracts, constraints, and failure behaviour; implementation comments explain
-non-obvious decisions instead of restating code.
+to the future app package product are public. Other declarations remain
+internal or private. Documentation is added when it records contracts,
+constraints, or failure behaviour that the declaration does not make clear;
+implementation comments explain non-obvious decisions instead of restating
+code.
 
 The refactor does not change command output, exit codes, accepted arguments,
 privileged paths, or the sudoers allow-list unless a separate behaviour change

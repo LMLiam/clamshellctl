@@ -6,10 +6,12 @@
   "maximumBlankLines": 1,
   "multiElementCollectionTrailingCommas": true,
   "rules": {
+    "BeginDocumentationCommentWithOneLineSummary": true,
     "NeverForceUnwrap": true,
     "NeverUseForceTry": true,
     "NeverUseImplicitlyUnwrappedOptionals": true,
-    "OrderedImports": true
+    "OrderedImports": true,
+    "ValidateDocumentationComments": true
   },
   "version": 1
 }

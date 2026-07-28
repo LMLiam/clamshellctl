@@ -10,11 +10,13 @@ public struct ClamshellService: Sendable {
     self.stateWriter = stateWriter
   }
 
+  /// Avoids redundant writes and verifies the system state after a change.
   public func set(_ requested: ClamshellState) throws -> TransitionResult {
     let current = try stateReader.currentState()
     return try set(requested, from: current)
   }
 
+  /// Reads the current state once, then applies and verifies its opposite.
   public func toggle() throws -> TransitionResult {
     let current = try stateReader.currentState()
     let requested: ClamshellState = current == .enabled ? .disabled : .enabled

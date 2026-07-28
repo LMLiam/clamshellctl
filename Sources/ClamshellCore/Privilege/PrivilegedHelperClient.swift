@@ -9,6 +9,7 @@ public struct PrivilegedHelperClient: PowerStateWriting, Sendable {
     self.runner = runner
   }
 
+  /// Invokes only the installed helper's `enable` or `disable` action without prompting.
   public func setState(_ state: ClamshellState) throws {
     let action = state == .enabled ? "enable" : "disable"
     let result = try runner.run(

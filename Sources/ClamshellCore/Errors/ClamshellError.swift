@@ -21,7 +21,7 @@ public enum ClamshellError: Error, Equatable, LocalizedError {
 
   public var errorDescription: String? {
     switch self {
-    case .administratorPrivilegesRequired(let command):
+    case let .administratorPrivilegesRequired(command):
       "Administrator privileges are required. Run: \(command)"
     case .executablePathUnavailable:
       "Unable to resolve the clamshellctl executable path."
@@ -31,21 +31,21 @@ public enum ClamshellError: Error, Equatable, LocalizedError {
       "The privileged installation could not be verified."
     case .invalidHelperArguments:
       "Invalid privileged helper arguments."
-    case .invalidProcessOutput(let executable, let stream):
+    case let .invalidProcessOutput(executable, stream):
       "Unable to decode \(stream.rawValue) from \(executable)."
     case .invalidUsername:
       "The original account name is unavailable or unsafe."
     case .originalUserUnavailable:
       "Unable to identify the account that requested setup."
-    case .privilegedHelperUnavailable(let setupCommand):
+    case let .privilegedHelperUnavailable(setupCommand):
       "Privileged helper unavailable. Run: \(setupCommand)"
-    case .processFailed(let executable, let terminationStatus, let standardError):
+    case let .processFailed(executable, terminationStatus, standardError):
       processFailureDescription(
         executable: executable,
         terminationStatus: terminationStatus,
         standardError: standardError
       )
-    case .stateVerificationFailed(let expected, let actual):
+    case let .stateVerificationFailed(expected, actual):
       "Battery clamshell mode verification failed: expected \(expected.rawValue), found \(actual.rawValue)."
     case .sudoersValidationFailed:
       "The generated sudoers policy failed validation."

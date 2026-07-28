@@ -3,6 +3,7 @@ import Foundation
 public struct PowerSettingsParser: Sendable {
   public init() {}
 
+  /// Treats a missing `disablesleep` entry as disabled and rejects malformed values.
   public func batteryState(from output: String) throws -> ClamshellState {
     let lines = output.split(
       omittingEmptySubsequences: false,

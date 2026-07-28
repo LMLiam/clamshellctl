@@ -475,7 +475,7 @@ git add .editorconfig .gitattributes .gitignore .swift-format Package.swift Sour
 git commit -m "style(swift): adopt Google formatting"
 ```
 
-## Task 5: Add strict SwiftLint and public API documentation
+## Task 5: Add strict SwiftLint and useful API documentation
 
 **Files:**
 
@@ -508,7 +508,6 @@ First extend the `rules` object in `.swift-format` with the documentation rules
 that become enforceable in this task:
 
 ```json
-"AllPublicDeclarationsHaveDocumentation": true,
 "BeginDocumentationCommentWithOneLineSummary": true,
 "ValidateDocumentationComments": true
 ```
@@ -533,10 +532,11 @@ disabled_rules:
   - leading_whitespace
   - line_length
   - opening_brace
-  - operator_whitespace
+  - function_name_whitespace
   - return_arrow_whitespace
   - statement_position
   - force_try
+  - trailing_comma
   - trailing_newline
   - trailing_semicolon
   - trailing_whitespace
@@ -544,6 +544,7 @@ disabled_rules:
 
 opt_in_rules:
   - array_init
+  - closure_body_length
   - contains_over_filter_count
   - contains_over_filter_is_empty
   - discouraged_optional_boolean
@@ -563,6 +564,8 @@ opt_in_rules:
   - sorted_first_last
   - toggle_bool
   - unavailable_function
+
+analyzer_rules:
   - unused_import
 
 closure_body_length:
@@ -593,39 +596,30 @@ reporter: xcode
 Run:
 
 ```bash
-swift package plugin swiftlint --strict
+swift package plugin --allow-writing-to-package-directory swiftlint --strict
 ```
 
 Expected: non-zero until every reported correctness, naming, complexity, and
 unused-code violation is addressed. Do not create a baseline or disable a rule
 for the whole repository.
 
-- [ ] **Step 4: Document every public contract**
+- [ ] **Step 4: Document non-obvious public contracts**
 
-Add concise `///` documentation to each public type, initialiser, property, and
-method. The one-line summaries must communicate these exact contracts:
+Add concise `///` documentation only where it records behaviour that a
+self-describing declaration does not communicate. Cover these contracts:
 
 ```text
-ClamshellState                    Whether battery clamshell mode is enabled.
-PowerStateReading/Writing         Read or request the system state.
-TransitionResult                  Previous, verified current, and change status.
-PowerSettingsParser               Parse the Battery Power section from pmset.
-PowerSettingsClient               Read and mutate battery pmset settings.
-ProcessRunning/ProcessResult      Execute a process and capture both streams.
-FoundationProcessRunner           Foundation-backed ProcessRunning adapter.
-PrivilegedHelperClient            Request one allow-listed helper mutation.
-PrivilegedPaths                   Fixed root-owned installation destinations.
-SudoersPolicy                     Validate a username and generate exact policy.
-InstallationFileSystem            Filesystem operations required by installation.
-FoundationInstallationFileSystem  Foundation and POSIX filesystem adapter.
-PrivilegedInstallation            Install, verify, or remove privileged files.
-ClamshellService                  Apply idempotent, verified state transitions.
-BuildVersion                      Release-please-managed package version.
+PowerMutation          Accept only one exact helper action.
+PowerSettingsParser    Define missing and malformed pmset behaviour.
+PrivilegedHelperClient Restrict non-interactive helper invocation.
+SudoersPolicy          Reject unsafe usernames and allow only exact commands.
+PrivilegedInstallation Preserve staging, validation, verification, and idempotency.
+ClamshellService       Avoid redundant writes and verify state transitions.
 ```
 
-Document associated values and failure behaviour where a caller needs that
-information. Do not add comments to private implementation details unless the
-decision is non-obvious.
+Do not document obvious properties, trivial initialisers, or declarations whose
+names and types already state their complete contract. Do not add comments to
+private implementation details unless the decision is non-obvious.
 
 - [ ] **Step 5: Resolve every strict lint finding idiomatically**
 
@@ -636,7 +630,7 @@ Run after each group of fixes:
 ```bash
 swift format --recursive --in-place Sources Tests Package.swift
 swift format lint --recursive --strict Sources Tests Package.swift
-swift package plugin swiftlint --strict
+swift package plugin --allow-writing-to-package-directory swiftlint --strict
 swift test
 ```
 
@@ -704,7 +698,7 @@ if [[ -d App ]]; then
 fi
 
 swift format lint --recursive --strict "${swift_paths[@]}"
-swift package plugin swiftlint --strict
+swift package plugin --allow-writing-to-package-directory swiftlint --strict
 swift test
 swift build
 swift build -c release
@@ -789,7 +783,7 @@ jobs:
         with:
           persist-credentials: false
       - run: swift format lint --recursive --strict Sources Tests Package.swift
-      - run: swift package plugin swiftlint --strict
+      - run: swift package plugin --allow-writing-to-package-directory swiftlint --strict
 
   tests:
     name: Tests

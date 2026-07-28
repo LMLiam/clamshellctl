@@ -35,6 +35,7 @@ public struct PrivilegedInstallation: Sendable {
     )
   }
 
+  /// Stages, validates, and verifies root-owned files, skipping an identical installation.
   public func install() throws -> InstallationResult {
     try requireAdministratorPrivileges()
 
@@ -52,50 +53,8 @@ public struct PrivilegedInstallation: Sendable {
       )
     }
 
-    let helperTemporary = temporaryPath(for: PrivilegedPaths.helper)
-    var helperTemporaryExists = false
-    defer {
-      if helperTemporaryExists {
-        try? fileSystem.removeItem(at: helperTemporary)
-      }
-    }
-
-    try fileSystem.copyItem(at: payload, to: helperTemporary)
-    helperTemporaryExists = true
-    try fileSystem.setOwner(userID: 0, groupID: 0, at: helperTemporary)
-    try fileSystem.setPermissions(0o755, at: helperTemporary)
-    try fileSystem.replaceItem(
-      at: PrivilegedPaths.helper,
-      withItemAt: helperTemporary
-    )
-    helperTemporaryExists = false
-
-    let policyTemporary = temporaryPath(for: PrivilegedPaths.sudoersPolicy)
-    var policyTemporaryExists = false
-    defer {
-      if policyTemporaryExists {
-        try? fileSystem.removeItem(at: policyTemporary)
-      }
-    }
-
-    try fileSystem.write(policy.contents, to: policyTemporary)
-    policyTemporaryExists = true
-    try fileSystem.setOwner(userID: 0, groupID: 0, at: policyTemporary)
-    try fileSystem.setPermissions(0o440, at: policyTemporary)
-
-    let validation = try runner.run(
-      "/usr/sbin/visudo",
-      arguments: ["-cf", policyTemporary]
-    )
-    guard validation.terminationStatus == 0 else {
-      throw ClamshellError.sudoersValidationFailed
-    }
-
-    try fileSystem.replaceItem(
-      at: PrivilegedPaths.sudoersPolicy,
-      withItemAt: policyTemporary
-    )
-    policyTemporaryExists = false
+    try installHelper(payload: payload)
+    try installPolicy(policy)
 
     guard try isConfigured(payload: payload, policy: policy) else {
       throw ClamshellError.installationVerificationFailed
@@ -108,6 +67,7 @@ public struct PrivilegedInstallation: Sendable {
     )
   }
 
+  /// Removes only the two managed installation paths and is safe to repeat.
   public func uninstall() throws -> UninstallationResult {
     try requireAdministratorPrivileges(command: PrivilegedHelperClient.uninstallCommand)
 
@@ -122,6 +82,46 @@ public struct PrivilegedInstallation: Sendable {
 
   private func requireAdministratorPrivileges() throws {
     try requireAdministratorPrivileges(command: PrivilegedHelperClient.setupCommand)
+  }
+
+  private func installHelper(payload: String) throws {
+    let temporary = temporaryPath(for: PrivilegedPaths.helper)
+    var temporaryExists = false
+    defer {
+      if temporaryExists {
+        try? fileSystem.removeItem(at: temporary)
+      }
+    }
+
+    try fileSystem.copyItem(at: payload, to: temporary)
+    temporaryExists = true
+    try fileSystem.setOwner(userID: 0, groupID: 0, at: temporary)
+    try fileSystem.setPermissions(0o755, at: temporary)
+    try fileSystem.replaceItem(at: PrivilegedPaths.helper, withItemAt: temporary)
+    temporaryExists = false
+  }
+
+  private func installPolicy(_ policy: SudoersPolicy) throws {
+    let temporary = temporaryPath(for: PrivilegedPaths.sudoersPolicy)
+    var temporaryExists = false
+    defer {
+      if temporaryExists {
+        try? fileSystem.removeItem(at: temporary)
+      }
+    }
+
+    try fileSystem.write(policy.contents, to: temporary)
+    temporaryExists = true
+    try fileSystem.setOwner(userID: 0, groupID: 0, at: temporary)
+    try fileSystem.setPermissions(0o440, at: temporary)
+
+    let validation = try runner.run("/usr/sbin/visudo", arguments: ["-cf", temporary])
+    guard validation.terminationStatus == 0 else {
+      throw ClamshellError.sudoersValidationFailed
+    }
+
+    try fileSystem.replaceItem(at: PrivilegedPaths.sudoersPolicy, withItemAt: temporary)
+    temporaryExists = false
   }
 
   private func requireAdministratorPrivileges(command: String) throws {

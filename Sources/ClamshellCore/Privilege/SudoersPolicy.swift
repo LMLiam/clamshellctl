@@ -1,6 +1,7 @@
 public struct SudoersPolicy: Sendable, Equatable {
   public let username: String
 
+  /// Rejects root, empty names, and characters that could alter sudoers syntax.
   public init(username: String) throws {
     guard username != "root", !username.isEmpty, username.unicodeScalars.allSatisfy(Self.isSafe)
     else {
@@ -9,6 +10,7 @@ public struct SudoersPolicy: Sendable, Equatable {
     self.username = username
   }
 
+  /// Permits only the installed helper's `enable` and `disable` actions.
   public var contents: String {
     """
     \(username) ALL=(root) NOPASSWD: \(PrivilegedPaths.helper) enable

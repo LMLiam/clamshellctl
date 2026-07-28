@@ -13,14 +13,7 @@ struct PrivilegedInstallationTests {
       files: [source: "helper payload"],
       log: log
     )
-    let runner = InstallationRecordingRunner(
-      result: ProcessResult(
-        standardOutput: "",
-        standardError: "",
-        terminationStatus: 0
-      ),
-      log: log
-    )
+    let runner = InstallationRecordingRunner(result: .success, log: log)
     let installation = PrivilegedInstallation(
       fileSystem: fileSystem,
       runner: runner,
@@ -42,41 +35,13 @@ struct PrivilegedInstallationTests {
         )
     )
     #expect(
-      log.operations == [
-        .isRegularFile(source),
-        .isRegularFile(PrivilegedPaths.helper),
-        .copy(source: source, destination: helperTemporary),
-        .setOwner(path: helperTemporary, userID: 0, groupID: 0),
-        .setPermissions(path: helperTemporary, permissions: 0o755),
-        .replace(replacement: helperTemporary, destination: PrivilegedPaths.helper),
-        .write(
-          contents: try SudoersPolicy(username: "liam").contents,
-          path: policyTemporary
-        ),
-        .setOwner(path: policyTemporary, userID: 0, groupID: 0),
-        .setPermissions(path: policyTemporary, permissions: 0o440),
-        .run(
-          executable: "/usr/sbin/visudo",
-          arguments: ["-cf", policyTemporary]
-        ),
-        .replace(
-          replacement: policyTemporary,
-          destination: PrivilegedPaths.sudoersPolicy
-        ),
-        .isRegularFile(PrivilegedPaths.helper),
-        .contentsEqual(
-          firstPath: source,
-          secondPath: PrivilegedPaths.helper
-        ),
-        .attributes(PrivilegedPaths.helper),
-        .isRegularFile(PrivilegedPaths.sudoersPolicy),
-        .readText(PrivilegedPaths.sudoersPolicy),
-        .attributes(PrivilegedPaths.sudoersPolicy),
-        .run(
-          executable: "/usr/sbin/visudo",
-          arguments: ["-cf", PrivilegedPaths.sudoersPolicy]
-        ),
-      ]
+      log.operations
+        == expectedInstallOperations(
+          source: source,
+          helperTemporary: helperTemporary,
+          policyTemporary: policyTemporary,
+          policyContents: try SudoersPolicy(username: "liam").contents
+        )
     )
   }
 
@@ -260,5 +225,39 @@ struct PrivilegedInstallationTests {
     #expect(first.removedPaths == [PrivilegedPaths.helper, PrivilegedPaths.sudoersPolicy])
     #expect(second.removedPaths.isEmpty)
     #expect(fileSystem.contents(at: unrelated) == "unrelated")
+  }
+
+  private func expectedInstallOperations(
+    source: String,
+    helperTemporary: String,
+    policyTemporary: String,
+    policyContents: String
+  ) -> [InstallationOperation] {
+    [
+      .isRegularFile(source),
+      .isRegularFile(PrivilegedPaths.helper),
+      .copy(source: source, destination: helperTemporary),
+      .setOwner(path: helperTemporary, userID: 0, groupID: 0),
+      .setPermissions(path: helperTemporary, permissions: 0o755),
+      .replace(replacement: helperTemporary, destination: PrivilegedPaths.helper),
+      .write(contents: policyContents, path: policyTemporary),
+      .setOwner(path: policyTemporary, userID: 0, groupID: 0),
+      .setPermissions(path: policyTemporary, permissions: 0o440),
+      .run(executable: "/usr/sbin/visudo", arguments: ["-cf", policyTemporary]),
+      .replace(
+        replacement: policyTemporary,
+        destination: PrivilegedPaths.sudoersPolicy
+      ),
+      .isRegularFile(PrivilegedPaths.helper),
+      .contentsEqual(firstPath: source, secondPath: PrivilegedPaths.helper),
+      .attributes(PrivilegedPaths.helper),
+      .isRegularFile(PrivilegedPaths.sudoersPolicy),
+      .readText(PrivilegedPaths.sudoersPolicy),
+      .attributes(PrivilegedPaths.sudoersPolicy),
+      .run(
+        executable: "/usr/sbin/visudo",
+        arguments: ["-cf", PrivilegedPaths.sudoersPolicy]
+      ),
+    ]
   }
 }
