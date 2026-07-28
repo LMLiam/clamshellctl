@@ -1,0 +1,34 @@
+name: Feature request
+description: Suggest an improvement grounded in a user problem.
+title: "feat(area): "
+labels:
+  - "type: feature"
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: User problem
+      description: Describe the problem independently of a proposed implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: outcome
+    attributes:
+      label: Desired outcome
+      description: Explain what a successful result would let the user do.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Include current workarounds or simpler alternatives.
+    validations:
+      required: true
+  - type: textarea
+    id: security
+    attributes:
+      label: Security or privilege impact
+      description: Explain whether this could expand helper, sudoers, filesystem, or background-process access.
+    validations:
+      required: true
