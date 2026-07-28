@@ -2,8 +2,6 @@ public struct PrivilegedHelperClient: PowerStateWriting, Sendable {
     public static let setupCommand = #"sudo "$(brew --prefix)/bin/clamshellctl" setup"#
 
     private static let executable = "/usr/bin/sudo"
-    private static let helper = "/Library/PrivilegedHelperTools/clamshellctl-helper"
-
     private let runner: any ProcessRunning
 
     public init(runner: any ProcessRunning) {
@@ -14,7 +12,7 @@ public struct PrivilegedHelperClient: PowerStateWriting, Sendable {
         let action = state == .enabled ? "enable" : "disable"
         let result = try runner.run(
             Self.executable,
-            arguments: ["-n", Self.helper, action]
+            arguments: ["-n", PrivilegedPaths.helper, action]
         )
 
         guard result.terminationStatus == 0 else {
