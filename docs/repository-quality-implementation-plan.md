@@ -1,9 +1,5 @@
 # Repository Quality Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use
-> `superpowers:executing-plans` to implement this plan task by task. Liam has
-> explicitly prohibited subagents for this work.
-
 **Goal:** Make `clamshellctl` an idiomatic, consistently enforced Swift project
 with a complete public GitHub repository, CodeQL analysis, release automation,
 and protected-main governance.
@@ -565,9 +561,6 @@ opt_in_rules:
   - toggle_bool
   - unavailable_function
 
-analyzer_rules:
-  - unused_import
-
 closure_body_length:
   warning: 40
   error: 60
@@ -599,9 +592,9 @@ Run:
 swift package plugin --allow-writing-to-package-directory swiftlint --strict
 ```
 
-Expected: non-zero until every reported correctness, naming, complexity, and
-unused-code violation is addressed. Do not create a baseline or disable a rule
-for the whole repository.
+Expected: non-zero until every reported correctness, naming, and complexity
+violation is addressed. Do not create a baseline or disable a rule for the
+whole repository.
 
 - [ ] **Step 4: Document non-obvious public contracts**
 
@@ -1110,9 +1103,9 @@ security reporting. It must state that SwiftLint suppressions require a local
 reason and that contributors must not run privileged tests against live system
 paths.
 
-Use Contributor Covenant 2.1 unchanged in `CODE_OF_CONDUCT.md`, with
-`https://github.com/LMLiam` as the enforcement contact rather than a personal
-email address.
+Use Contributor Covenant 2.1 unchanged except for replacing its enforcement
+contact placeholder with `https://github.com/LMLiam`. This intentional
+substitution avoids publishing a personal email address.
 
 - [ ] **Step 2: Add security and support policy**
 

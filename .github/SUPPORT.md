@@ -7,3 +7,8 @@
 
 This is a community project. Opening an issue does not guarantee individual
 support or a response time.
+
+Safe diagnostics include `clamshellctl --version` and `clamshellctl status`.
+Review output before posting it. Do not publish sudoers contents when they
+contain unexpected local changes; use private vulnerability reporting if those
+changes may expose a security problem.

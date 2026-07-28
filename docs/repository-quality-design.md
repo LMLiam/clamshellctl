@@ -185,7 +185,7 @@ publishes results through GitHub code scanning.
 
 ### Pull-request titles
 
-`pr-title.yml` enforces `verb(area): description`. Accepted verbs follow the
+`pr.yml` enforces `verb(area): description`. Accepted verbs follow the
 repository's release-please conventions. The same structure is used for local
 commits.
 

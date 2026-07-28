@@ -1115,8 +1115,7 @@ git commit -m "docs(project): document installation and maintenance"
 
 - Create: `.github/workflows/ci.yml`
 - Create: `.github/workflows/pr.yml`
-- Create: `scripts/validate-conventional-title.sh`
-- Create: `Tests/Scripts/run-title-tests.sh`
+- Create: `scripts/check-conventional-subject.sh`
 
 - [ ] **Step 1: Test the title validator**
 
@@ -1137,7 +1136,8 @@ Use a portable anchored regular expression for the allowed Conventional Commit v
 Run:
 
 ```bash
-bash Tests/Scripts/run-title-tests.sh
+scripts/check-conventional-subject.sh "feat(cli): add toggle command"
+! scripts/check-conventional-subject.sh "feat: add toggle command"
 scripts/check.sh
 ```
 
@@ -1146,7 +1146,7 @@ Install `actionlint` with `brew install actionlint` first when it is not already
 - [ ] **Step 5: Commit CI**
 
 ```bash
-git add .github/workflows scripts Tests/Scripts
+git add .github/workflows scripts
 git commit -m "ci(checks): verify Swift and pull-request quality"
 ```
 
@@ -1339,7 +1339,9 @@ Before declaring the MVP complete, run:
 ```bash
 scripts/check.sh
 bash scripts/check-version-consistency.sh
-bash Tests/Scripts/run-title-tests.sh
+while IFS= read -r subject; do
+  scripts/check-conventional-subject.sh "$subject"
+done < <(git log --format=%s origin/main..HEAD)
 bash Tests/Scripts/run-dmg-packaging-tests.sh
 bash Tests/Scripts/run-formula-generator-tests.sh
 bash Tests/Scripts/run-publish-formula-tests.sh
