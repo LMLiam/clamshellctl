@@ -2,9 +2,9 @@
 
 ## Summary
 
-`clamshellctl` is a macOS command-line utility that allows a Mac notebook to remain awake in clamshell mode while it is running on battery power. It wraps the relevant `pmset` setting behind a small, testable Swift CLI and a narrowly restricted privileged helper.
+`clamshellctl` allows a Mac notebook to remain awake in clamshell mode while it is running on battery power. It wraps the relevant `pmset` setting behind a small, testable Swift core and a narrowly restricted privileged helper.
 
-The CLI is the primary product. An optional macOS Shortcut provides convenient access from Control Centre without adding a menu-bar item. Homebrew is the primary installation method.
+The CLI is the primary product and Homebrew is its default installation method. An optional, self-contained macOS companion app provides a stateful WidgetKit control that users can place in Control Centre. The companion is distributed as a GitHub Release DMG and does not require a separate Homebrew installation.
 
 ## Goals
 
@@ -13,14 +13,17 @@ The CLI is the primary product. An optional macOS Shortcut provides convenient a
 - Require an administrator password only during initial privileged setup or removal.
 - Keep password-free operation limited to the two required `pmset` mutations.
 - Make repeated commands safe and idempotent.
-- Provide an optional Shortcut that users can add to Control Centre.
+- Provide an optional native toggle that users can add to Control Centre.
+- Reflect the verified enabled state through the control's active and inactive appearance.
+- Package the companion app, control extension, CLI, and helper payload together in one DMG installation.
+- Keep the companion out of the Dock and menu bar during normal operation.
 - Publish releases through release-please and distribute through `LMLiam/homebrew-tap`.
 - Work on both Apple silicon and Intel Macs supported by the selected Swift toolchain.
 
 ## Non-goals for v1
 
-- A menu-bar application.
-- A native WidgetKit Control Widget with dynamic enabled-state colouring.
+- A persistent menu-bar application.
+- A traditional desktop or Notification Centre widget.
 - Apple Developer Programme signing or notarisation.
 - Automatically changing the setting when USB-C devices are disconnected.
 - Linux or Windows support.
@@ -29,6 +32,15 @@ The CLI is the primary product. An optional macOS Shortcut provides convenient a
 Automatic USB-C disconnect handling remains a separate future issue because the implementation must distinguish displays and power sources from unrelated USB-C devices.
 
 ## User experience
+
+Users choose one of two independent installation paths:
+
+- Homebrew installs the CLI and helper payload for terminal-first use.
+- The GitHub DMG installs `Clamshell.app`, which includes the Control Centre extension, the same CLI, and the helper payload.
+
+Installing the DMG does not require Homebrew. The app's first-run setup explains the unsigned-app Gatekeeper approval, installs the root-owned helper and narrow sudoers policy after administrator authorisation, and confirms that the system can discover the Control Centre toggle. The user adds the toggle to Control Centre because macOS does not allow an app to make that personalisation choice automatically.
+
+The app has no persistent Dock or menu-bar presence. It presents a small setup and diagnostics window when opened directly. Users who want terminal access can optionally expose the bundled CLI at `/usr/local/bin/clamshellctl`; this is a symlink to the app-bundled executable rather than a second copy.
 
 The public command surface is:
 
@@ -48,19 +60,25 @@ clamshellctl --help
 
 `enable`, `disable`, and `toggle` verify the resulting system state before reporting success. Repeating `enable` when already enabled or `disable` when already disabled succeeds without an unnecessary mutation.
 
-`--quiet` suppresses successful output for Shortcuts and scripts. Errors still go to standard error and use a non-zero exit status.
+`--quiet` suppresses successful output for automation and scripts. Errors still go to standard error and use a non-zero exit status.
 
 Durations accept a deliberately small syntax: whole numbers followed by `m`, `h`, or `d`, such as `30m`, `2h`, or `1d`. A new timed enable replaces an existing timer. Manual disablement cancels any active timer.
 
 ## Architecture
 
-The Swift package contains three production targets and two executable products:
+The repository contains a Swift package for the shared implementation and CLI products, plus an Xcode project for the native companion:
 
 1. `ClamshellCore` owns state parsing, command decisions, duration handling, timer metadata, setup-file generation, and domain errors. It does not execute privileged system changes directly.
 2. `ClamshellCLI` produces the `clamshellctl` executable. It parses arguments, reads current state, invokes the helper when needed, manages the timer, and renders user-facing output.
 3. `ClamshellHelper` produces the `clamshellctl-helper` executable. It accepts only `enable` or `disable`, invokes `pmset`, and verifies the resulting state.
+4. `ClamshellApp` provides first-run setup, diagnostics, helper removal, and the background App Intent execution path. It has no persistent Dock or menu-bar item. Normal state reads and mutations call `ClamshellCore` directly.
+5. `ClamshellControl` is a WidgetKit extension that supplies a `ControlWidgetToggle`. Its value provider performs the read-only `pmset` query through `ClamshellCore`; its `SetValueIntent` targets the main app process, which performs the requested mutation through the installed helper and verifies the result before returning.
 
 System commands are accessed through injected process-running interfaces so unit and integration tests can use deterministic fakes. `pmset` remains the sole source of truth for whether battery clamshell mode is enabled.
+
+The app and CLI both call `ClamshellCore`; normal app operation does not shell out through the CLI. First-run setup is the deliberate exception: the app uses the macOS administrator-authorisation dialog to run the bundled CLI's existing `setup` operation, keeping one audited privileged-installation path. The DMG bundles the CLI executable for optional terminal use and bundles the helper only as an installation payload. The privileged helper installed on the system is a root-owned copy outside the user-writable app bundle.
+
+The CLI supports macOS 13 and later. The companion app and Control Centre extension support macOS 26 and later, which is the first macOS SDK that exposes WidgetKit controls on Mac. Keeping separate deployment targets preserves broad CLI compatibility without weakening the native experience.
 
 The implementation favours idiomatic Swift, small responsibility-based types, explicit dependency boundaries, and value semantics where appropriate. Public and internal APIs remain easy to extend without speculative abstractions: each component exposes the smallest interface needed by its callers, while platform interactions stay behind replaceable adapters.
 
@@ -81,7 +99,7 @@ This flow keeps normal operation fast while preventing a successful message from
 
 ## Privileged setup and removal
 
-Homebrew installs the public CLI and an unprivileged helper payload. It does not run privileged installation steps.
+Homebrew installs the public CLI and an unprivileged helper payload. The companion app contains equivalent payloads inside its bundle. Neither installation path performs privileged changes before the user explicitly starts setup.
 
 The documented setup command runs the installed CLI with `sudo`, using its explicit Homebrew path where the administrator's secure path does not include Homebrew. Setup then:
 
@@ -94,7 +112,7 @@ The documented setup command runs the installed CLI with `sudo`, using its expli
 
 The sudoers rule never grants password-free access to arbitrary `pmset` arguments, the public CLI, a shell, or a user-writable file.
 
-`uninstall` removes only the helper and its sudoers file after validating their expected paths. Homebrew remains responsible for uninstalling the public CLI. Removing the privileged components is safe to repeat.
+`uninstall` removes only the helper and its sudoers file after validating their expected paths. When the companion created the optional `/usr/local/bin/clamshellctl` symlink, removal also deletes that symlink after verifying that it targets the companion bundle. Homebrew remains responsible for uninstalling a Homebrew-managed CLI. Removing the privileged components is safe to repeat.
 
 ## Timed enablement
 
@@ -104,13 +122,23 @@ The timer is based on an absolute deadline so sleep does not restart its duratio
 
 Timer files use a stable application-support location under the user's Library and do not require root access.
 
-## Shortcut and Control Centre
+## Companion app and Control Centre
 
-The repository and release assets include an importable Shortcut. The Shortcut locates Homebrew in `/opt/homebrew` or `/usr/local`, then runs `clamshellctl toggle --quiet`.
+The companion supplies a `ControlWidgetToggle` rather than a traditional widget or Shortcut. Its value provider displays the battery clamshell state read directly from `pmset`. Its `SetValueIntent` requests the exact state selected by the user instead of blindly toggling, which makes retries and optimistic system UI updates safe. The intent is restricted to the main app execution target and background execution mode; the widget extension never performs privileged mutation itself.
 
-macOS requires the user to approve importing the Shortcut and add it to Control Centre manually. The project does not claim that setup can bypass those privacy controls.
+When enabled, the system renders the control in its active appearance; when disabled, it renders the inactive appearance. After an action completes, the app requests a control reload so the displayed value is reconciled with the `pmset` source of truth.
 
-The Shortcut tile cannot reflect the live enabled state. Dynamic colouring would require a native WidgetKit Control Widget, application packaging, signing, and the Apple distribution path that is explicitly outside v1.
+The unsigned distribution path has a mandatory feasibility gate before release. An ad-hoc-signed build must prove on a clean local account that macOS discovers the extension after Gatekeeper approval, the value provider can obtain current state, the intent can reach only the narrow helper operation, and an app update preserves the control and privileged setup. If any part of that boundary cannot be secured without Developer ID capabilities, the CLI ships independently while the companion remains unreleased rather than broadening privileges.
+
+The project cannot add the control to Control Centre automatically. Setup provides concise instructions and verifies discovery, while placement remains the user's explicit macOS personalisation choice.
+
+## DMG distribution
+
+GitHub Releases publish an ad-hoc-signed DMG containing `Clamshell.app`. A free Apple Account is sufficient to develop and test the app, but it does not provide Developer ID signing or notarisation. The README therefore explains the initial Gatekeeper warning and the exact Privacy & Security `Open Anyway` flow without implying that the app has been reviewed by Apple.
+
+The app bundle contains the control extension, shared implementation, bundled CLI, and helper payload. Dragging the app to `/Applications` is the only application installation step. First-run setup performs the privileged installation separately so the security-sensitive helper is immutable by the normal user.
+
+Removing privileged setup deletes only the root-owned helper, sudoers rule, and optional CLI symlink. Removing `Clamshell.app` deletes the companion and Control Centre extension. The app and documentation guide users to remove privileged setup before deleting the bundle.
 
 ## Errors and recovery
 
@@ -122,7 +150,7 @@ User-facing errors are concise and actionable:
 - permission failure: identify the privileged setup as invalid and suggest rerunning setup;
 - failed state verification: report the expected and observed states;
 - timer installation failure: disable the newly enabled mode unless the user explicitly requested permanent enablement; and
-- missing Homebrew CLI from the Shortcut: direct the user to install or repair `clamshellctl`.
+- unavailable Control Centre action: direct the user to open the companion for helper and extension diagnostics.
 
 Diagnostic command output is included only when it is safe and useful. No operation silently broadens privileges or changes AC-power settings.
 
@@ -137,9 +165,12 @@ clamshellctl/
 │   ├── ClamshellCore/
 │   ├── ClamshellCLI/
 │   └── ClamshellHelper/
+├── App/
+│   ├── ClamshellApp/
+│   └── ClamshellControl/
+├── Clamshell.xcodeproj/
 ├── Tests/
 │   └── ClamshellCoreTests/
-├── Shortcuts/
 ├── docs/
 │   ├── assets/
 │   └── clamshellctl-design.md
@@ -172,7 +203,9 @@ Unit tests cover:
 
 Integration tests execute the CLI and helper against fake process runners and temporary files. CI never invokes a real privileged mutation or changes a runner's power settings.
 
-GitHub Actions runs Swift build and test jobs on macOS. Release readiness also requires a manual acceptance pass on a Mac notebook covering battery enablement, AC behaviour remaining unchanged, disablement, toggle, timed disablement, setup removal, and Shortcut invocation.
+GitHub Actions runs Swift build and test jobs on macOS. Release readiness also requires a manual acceptance pass on a Mac notebook covering battery enablement, AC behaviour remaining unchanged, disablement, toggle, timed disablement, and setup removal.
+
+The companion has an additional clean-account acceptance pass covering Gatekeeper approval, first-run privileged setup, Control Centre discovery, correct active and inactive rendering, external CLI state changes, app updates, optional CLI exposure, and complete removal. The release workflow does not publish the DMG until these behaviours pass with the actual ad-hoc-signed release artefact.
 
 ## Releases
 
@@ -189,6 +222,8 @@ The project uses Conventional Commits and release-please, matching the establish
 The release workflow uses `RELEASE_PLEASE_TOKEN`, with `GITHUB_TOKEN` available only as a documented fallback, so CI runs on release-please PRs. It uses a separate, narrowly scoped `TAP_GITHUB_TOKEN` to update the Homebrew tap.
 
 Merging the release PR creates the version tag and GitHub Release. The action's `release_created` output gates subsequent publication work in the same workflow.
+
+The GitHub Release also contains the companion DMG when its native acceptance gate is enabled for that release. Homebrew publication and the CLI release remain independent of DMG eligibility so a companion-specific failure cannot block CLI users.
 
 ## Homebrew distribution
 
@@ -207,19 +242,21 @@ sudo "$(brew --prefix)/bin/clamshellctl" setup
 
 No paid Apple Developer Programme membership is required for this source-build distribution model.
 
+The DMG is the independent installation path for users who want the native Control Centre experience. It does not require Homebrew and includes the same version of the CLI and helper payload as the tagged source release.
+
 ## Public repository and community setup
 
 The local repository lives at `/Users/liam/Developer/clamshellctl`. The public repository is `LMLiam/clamshellctl`, uses the `main` branch, and is licensed under MIT.
 
 The initial public setup includes:
 
-- a concise README with the logo, purpose, safety explanation, installation, setup, usage, Shortcut import, troubleshooting, and uninstall instructions;
+- a concise README with the logo, purpose, safety explanation, Homebrew and DMG installation, setup, Control Centre placement, Gatekeeper approval, troubleshooting, and uninstall instructions;
 - contribution, security, and support documents;
 - focused issue templates;
 - CI, Conventional PR-title validation, release-please, and Homebrew publication workflows; and
 - GitHub issues that describe the intended outcome and retain the approved implementation plan in their bodies.
 
-Initial issues cover the core CLI, privileged setup, timed enablement, Shortcut packaging, documentation, Homebrew publication, and release automation. Later issues cover USB-C disconnect automation and reconsidering native Control Centre state only if the signing constraint changes.
+Initial issues cover the core CLI, privileged setup, timed enablement, native companion feasibility, Control Centre integration, DMG packaging, documentation, Homebrew publication, and release automation. A later issue covers USB-C disconnect automation.
 
 After the repository is public and its README is ready, `LMLiam/LMLiam` is updated to feature `clamshellctl` on the GitHub profile.
 
@@ -232,7 +269,9 @@ The initial release is complete when:
 - AC-power settings are never changed;
 - repeated operations and uninstall are safe;
 - the timed-disable path survives ordinary sleep and cancels correctly;
-- the imported Shortcut can toggle the mode from Control Centre;
+- the optional companion installs without Homebrew and exposes a stateful toggle in Control Centre;
+- the Control Centre appearance matches the verified `pmset` state after app, CLI, and timer changes;
+- the ad-hoc-signed release passes the clean-account security and lifecycle acceptance gate;
 - CI passes without privileged mutation;
 - merging a release-please PR creates the GitHub Release and updates the Homebrew formula; and
 - the public README and GitHub profile link users to the project.
