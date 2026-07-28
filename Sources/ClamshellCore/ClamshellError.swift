@@ -1,4 +1,5 @@
 public enum ClamshellError: Error, Equatable {
+    case invalidHelperArguments
     case invalidProcessOutput(executable: String, stream: ProcessOutputStream)
     case processFailed(
         executable: String,
