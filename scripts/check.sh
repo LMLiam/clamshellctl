@@ -1,7 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
-readonly repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+repository_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+readonly repository_root
 cd "$repository_root"
 
 swift_paths=(Package.swift Sources Tests)
