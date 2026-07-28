@@ -1,11 +1,5 @@
-import ArgumentParser
 import ClamshellCore
 import Foundation
-
-struct OutputOptions: ParsableArguments {
-    @Flag(name: .long, help: "Suppress successful output.")
-    var quiet = false
-}
 
 struct Console {
     private let standardOutput: FileHandle

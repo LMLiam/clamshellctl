@@ -1,31 +1,6 @@
 import Dispatch
 import Foundation
 
-public enum ProcessOutputStream: String, Sendable {
-    case standardOutput
-    case standardError
-}
-
-public struct ProcessResult: Sendable, Equatable {
-    public let standardOutput: String
-    public let standardError: String
-    public let terminationStatus: Int32
-
-    public init(
-        standardOutput: String,
-        standardError: String,
-        terminationStatus: Int32
-    ) {
-        self.standardOutput = standardOutput
-        self.standardError = standardError
-        self.terminationStatus = terminationStatus
-    }
-}
-
-public protocol ProcessRunning: Sendable {
-    func run(_ executable: String, arguments: [String]) throws -> ProcessResult
-}
-
 public struct FoundationProcessRunner: ProcessRunning {
     public init() {}
 

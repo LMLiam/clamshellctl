@@ -1,18 +1,3 @@
-public struct PowerMutation: Sendable, Equatable {
-    public let state: ClamshellState
-
-    public init(rawArguments: [String]) throws {
-        switch rawArguments {
-        case ["enable"]:
-            state = .enabled
-        case ["disable"]:
-            state = .disabled
-        default:
-            throw ClamshellError.invalidHelperArguments
-        }
-    }
-}
-
 public struct PowerSettingsClient: PowerStateReading, PowerStateWriting, Sendable {
     private let runner: any ProcessRunning
     private let parser: PowerSettingsParser

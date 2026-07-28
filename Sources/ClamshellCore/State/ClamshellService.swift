@@ -1,23 +1,3 @@
-public protocol PowerStateReading: Sendable {
-    func currentState() throws -> ClamshellState
-}
-
-public protocol PowerStateWriting: Sendable {
-    func setState(_ state: ClamshellState) throws
-}
-
-public struct TransitionResult: Sendable, Equatable {
-    public let previous: ClamshellState
-    public let current: ClamshellState
-    public let didChange: Bool
-
-    public init(previous: ClamshellState, current: ClamshellState, didChange: Bool) {
-        self.previous = previous
-        self.current = current
-        self.didChange = didChange
-    }
-}
-
 public struct ClamshellService: Sendable {
     private let stateReader: any PowerStateReading
     private let stateWriter: any PowerStateWriting

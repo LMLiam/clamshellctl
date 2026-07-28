@@ -1,8 +1,3 @@
-public enum PrivilegedPaths {
-    public static let helper = "/Library/PrivilegedHelperTools/clamshellctl-helper"
-    public static let sudoersPolicy = "/etc/sudoers.d/clamshellctl"
-}
-
 public struct SudoersPolicy: Sendable, Equatable {
     public let username: String
 
