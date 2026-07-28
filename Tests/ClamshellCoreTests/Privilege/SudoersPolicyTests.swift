@@ -31,6 +31,7 @@ struct SudoersPolicyTests {
     let invalidUsernames = [
       "",
       "root",
+      "ALL",
       "liam smith",
       "../liam",
       "liam/name",

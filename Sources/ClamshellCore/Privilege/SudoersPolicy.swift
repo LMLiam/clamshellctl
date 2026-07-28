@@ -1,9 +1,13 @@
 public struct SudoersPolicy: Sendable, Equatable {
   public let username: String
 
-  /// Rejects root, empty names, and characters that could alter sudoers syntax.
+  /// Rejects root, the sudoers `ALL` alias, empty names, and unsafe characters.
   public init(username: String) throws {
-    guard username != "root", !username.isEmpty, username.unicodeScalars.allSatisfy(Self.isSafe)
+    guard
+      username != "root",
+      username != "ALL",
+      !username.isEmpty,
+      username.unicodeScalars.allSatisfy(Self.isSafe)
     else {
       throw ClamshellError.invalidUsername(username)
     }
