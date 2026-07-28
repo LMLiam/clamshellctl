@@ -64,6 +64,9 @@ Examples include `feat(status): report battery state` and
 `feat`, `fix`, `docs`, `test`, `build`, `ci`, `refactor`, `perf`, `style`,
 `chore`, and `revert`.
 
+Dependency updates use `build(deps): ...` so they remain within the accepted
+commit vocabulary and are hidden from the public changelog.
+
 ## Tests
 
 Test observable behaviour through public or internal boundaries. Cover failure

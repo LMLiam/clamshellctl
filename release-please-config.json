@@ -19,7 +19,6 @@
         {"type": "fix", "section": "Fixes"},
         {"type": "perf", "section": "Performance"},
         {"type": "docs", "section": "Documentation"},
-        {"type": "deps", "section": "Dependencies"},
         {"type": "test", "section": "Tests", "hidden": true},
         {"type": "build", "section": "Build", "hidden": true},
         {"type": "ci", "section": "CI", "hidden": true},
