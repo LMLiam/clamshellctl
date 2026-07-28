@@ -1,3 +1,3 @@
 public protocol PowerStateReading: Sendable {
-    func currentState() throws -> ClamshellState
+  func currentState() throws -> ClamshellState
 }

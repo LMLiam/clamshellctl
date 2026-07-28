@@ -1,4 +1,4 @@
 public enum ProcessOutputStream: String, Sendable {
-    case standardOutput
-    case standardError
+  case standardOutput
+  case standardError
 }

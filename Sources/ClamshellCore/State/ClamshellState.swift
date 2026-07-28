@@ -1,4 +1,4 @@
 public enum ClamshellState: String, Sendable {
-    case enabled
-    case disabled
+  case enabled
+  case disabled
 }
