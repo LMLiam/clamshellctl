@@ -1,4 +1,5 @@
 import ArgumentParser
+import ClamshellCore
 
 struct UninstallCommand: ParsableCommand {
   static let configuration = CommandConfiguration(
@@ -9,7 +10,11 @@ struct UninstallCommand: ParsableCommand {
   @OptionGroup var output: OutputOptions
 
   func run() throws {
-    let result = try CommandComposition.privilegedInstallation().uninstall()
+    try run(installation: CommandComposition.privilegedInstallation())
+  }
+
+  func run(installation: PrivilegedInstallation) throws {
+    let result = try installation.uninstall()
     let console = Console(isQuiet: output.quiet)
 
     guard !result.removedPaths.isEmpty else {

@@ -1,4 +1,5 @@
 import ArgumentParser
+import ClamshellCore
 
 struct SetupCommand: ParsableCommand {
   static let configuration = CommandConfiguration(
@@ -9,7 +10,11 @@ struct SetupCommand: ParsableCommand {
   @OptionGroup var output: OutputOptions
 
   func run() throws {
-    let result = try CommandComposition.privilegedInstallation().install()
+    try run(installation: CommandComposition.privilegedInstallation())
+  }
+
+  func run(installation: PrivilegedInstallation) throws {
+    let result = try installation.install()
     let console = Console(isQuiet: output.quiet)
 
     if result.didChange {

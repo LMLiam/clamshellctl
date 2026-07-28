@@ -38,10 +38,15 @@ final class RecordingInstallationFileSystem:
 {
   private let lock = NSLock()
   private let log: InstallationOperationLog
+  private let reportsMatchingContents: Bool
   private var files: [String: String]
   private var fileAttributes: [String: InstalledFileAttributes]
 
-  init(files: [String: String], log: InstallationOperationLog) {
+  init(
+    files: [String: String],
+    log: InstallationOperationLog,
+    reportsMatchingContents: Bool = true
+  ) {
     self.files = files
     fileAttributes = Dictionary(
       uniqueKeysWithValues: files.keys.map {
@@ -49,6 +54,7 @@ final class RecordingInstallationFileSystem:
       }
     )
     self.log = log
+    self.reportsMatchingContents = reportsMatchingContents
   }
 
   func itemExists(at path: String) -> Bool {
@@ -63,7 +69,7 @@ final class RecordingInstallationFileSystem:
 
   func contentsEqual(at firstPath: String, and secondPath: String) -> Bool {
     log.append(.contentsEqual(firstPath: firstPath, secondPath: secondPath))
-    return lock.withLock { files[firstPath] == files[secondPath] }
+    return reportsMatchingContents && lock.withLock { files[firstPath] == files[secondPath] }
   }
 
   func readText(at path: String) throws -> String {

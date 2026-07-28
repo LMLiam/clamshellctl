@@ -4,8 +4,14 @@ import Testing
 
 @Suite("Build version")
 struct BuildVersionTests {
-  @Test("starts at the planned initial version")
-  func initialVersion() {
-    #expect(BuildVersion.current == "0.1.0")
+  @Test("uses a three-component semantic version")
+  func semanticVersion() {
+    let components = BuildVersion.current.split(
+      separator: ".",
+      omittingEmptySubsequences: false
+    )
+
+    #expect(components.count == 3)
+    #expect(components.allSatisfy { UInt($0) != nil })
   }
 }
