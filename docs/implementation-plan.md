@@ -489,8 +489,8 @@ git commit -m "feat(helper): restrict privileged power mutations"
 Assert that the client runs only:
 
 ```text
-/usr/bin/sudo -n /usr/local/libexec/clamshellctl-helper enable
-/usr/bin/sudo -n /usr/local/libexec/clamshellctl-helper disable
+/usr/bin/sudo -n /Library/PrivilegedHelperTools/clamshellctl-helper enable
+/usr/bin/sudo -n /Library/PrivilegedHelperTools/clamshellctl-helper disable
 ```
 
 Map sudo's non-zero result to an error that names the setup command without echoing arbitrary stderr.
@@ -531,7 +531,7 @@ git commit -m "feat(cli): add clamshell control commands"
 
 - [ ] **Step 1: Test username validation and exact policy text**
 
-Accept only ASCII usernames matching `[A-Za-z0-9._-]+`. The generated policy contains exactly two non-comment command rules, one for `enable` and one for `disable`, both targeting `/usr/local/libexec/clamshellctl-helper`. Reject whitespace, path separators, shell punctuation, empty names, and newlines.
+Accept only ASCII usernames matching `[A-Za-z0-9._-]+`. The generated policy contains exactly two non-comment command rules, one for `enable` and one for `disable`, both targeting `/Library/PrivilegedHelperTools/clamshellctl-helper`. Reject whitespace, path separators, shell punctuation, empty names, and newlines.
 
 - [ ] **Step 2: Test installation operations through an injected file system**
 
@@ -545,7 +545,7 @@ Resolve the original user from validated `SUDO_USER`; never default to root. Loc
 
 Run: `swift test --filter SudoersPolicyTests && swift test --filter PrivilegedInstallationTests`
 
-Expected: all tests use temporary directories and recording runners; `/usr/local/libexec` and `/etc/sudoers.d` remain unchanged.
+Expected: all tests use temporary directories and recording runners; `/Library/PrivilegedHelperTools` and `/etc/sudoers.d` remain unchanged.
 
 - [ ] **Step 5: Commit installation services**
 

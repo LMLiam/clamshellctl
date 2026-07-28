@@ -2,7 +2,7 @@ public struct PrivilegedHelperClient: PowerStateWriting, Sendable {
     public static let setupCommand = #"sudo "$(brew --prefix)/bin/clamshellctl" setup"#
 
     private static let executable = "/usr/bin/sudo"
-    private static let helper = "/usr/local/libexec/clamshellctl-helper"
+    private static let helper = "/Library/PrivilegedHelperTools/clamshellctl-helper"
 
     private let runner: any ProcessRunning
 

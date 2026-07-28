@@ -103,7 +103,7 @@ Homebrew installs the public CLI and an unprivileged helper payload. The compani
 
 The documented setup command runs the installed CLI with `sudo`, using its explicit Homebrew path where the administrator's secure path does not include Homebrew. Setup then:
 
-- copies the helper to `/usr/local/libexec/clamshellctl-helper`;
+- copies the helper to `/Library/PrivilegedHelperTools/clamshellctl-helper`;
 - sets ownership to `root:wheel` and mode `0755`;
 - writes `/etc/sudoers.d/clamshellctl` with mode `0440`;
 - permits the current user to run only the helper's exact `enable` and `disable` commands without a password;

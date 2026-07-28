@@ -29,7 +29,7 @@ struct PrivilegedHelperClientTests {
                     executable: "/usr/bin/sudo",
                     arguments: [
                         "-n",
-                        "/usr/local/libexec/clamshellctl-helper",
+                        "/Library/PrivilegedHelperTools/clamshellctl-helper",
                         action,
                     ]
                 )
