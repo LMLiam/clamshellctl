@@ -35,7 +35,11 @@ let package = Package(
     .testTarget(name: "ClamshellCoreTests", dependencies: ["ClamshellCore"]),
     .testTarget(
       name: "ClamshellCLITests",
-      dependencies: ["ClamshellCLI", "ClamshellCore"]
+      dependencies: [
+        "ClamshellCLI",
+        "ClamshellCore",
+        .product(name: "ArgumentParser", package: "swift-argument-parser"),
+      ]
     ),
   ]
 )
