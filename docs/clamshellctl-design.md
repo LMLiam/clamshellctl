@@ -71,8 +71,8 @@ The repository contains a Swift package for the shared implementation and CLI pr
 1. `ClamshellCore` owns state parsing, command decisions, duration handling, timer metadata, setup-file generation, and domain errors. It does not execute privileged system changes directly.
 2. `ClamshellCLI` produces the `clamshellctl` executable. It parses arguments, reads current state, invokes the helper when needed, manages the timer, and renders user-facing output.
 3. `ClamshellHelper` produces the `clamshellctl-helper` executable. It accepts only `enable` or `disable`, invokes `pmset`, and verifies the resulting state.
-4. `ClamshellApp` provides first-run setup, diagnostics, helper removal, and the background App Intent execution path. It has no persistent Dock or menu-bar item. Normal state reads and mutations call `ClamshellCore` directly.
-5. `ClamshellControl` is a WidgetKit extension that supplies a `ControlWidgetToggle`. Its value provider performs the read-only `pmset` query through `ClamshellCore`; its `SetValueIntent` targets the main app process, which performs the requested mutation through the installed helper and verifies the result before returning.
+4. `ClamshellApp` provides first-run setup, diagnostics, and helper removal. It has no persistent Dock or menu-bar item. Normal state reads and mutations call `ClamshellCore` directly.
+5. `ClamshellControl` is a WidgetKit extension that supplies a `ControlWidgetToggle`. Its value provider performs the read-only `pmset` query through `ClamshellCore`; its `SetValueIntent` uses the same narrow helper client as the app and verifies the requested state before returning.
 
 System commands are accessed through injected process-running interfaces so unit and integration tests can use deterministic fakes. `pmset` remains the sole source of truth for whether battery clamshell mode is enabled.
 
@@ -124,7 +124,7 @@ Timer files use a stable application-support location under the user's Library a
 
 ## Companion app and Control Centre
 
-The companion supplies a `ControlWidgetToggle` rather than a traditional widget or Shortcut. Its value provider displays the battery clamshell state read directly from `pmset`. Its `SetValueIntent` requests the exact state selected by the user instead of blindly toggling, which makes retries and optimistic system UI updates safe. The intent is restricted to the main app execution target and background execution mode; the widget extension never performs privileged mutation itself.
+The companion supplies a `ControlWidgetToggle` rather than a traditional widget or Shortcut. Its value provider displays the battery clamshell state read directly from `pmset`. Its `SetValueIntent` requests the exact state selected by the user instead of blindly toggling, which makes retries and optimistic system UI updates safe. The intent can execute from the system's selected app or extension process, but it reaches privilege only through the installed root-owned helper's exact `enable` or `disable` command. No app or extension process invokes `pmset` with mutation arguments directly.
 
 When enabled, the system renders the control in its active appearance; when disabled, it renders the inactive appearance. After an action completes, the app requests a control reload so the displayed value is reconciled with the `pmset` source of truth.
 
