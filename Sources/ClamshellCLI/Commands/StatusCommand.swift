@@ -7,9 +7,13 @@ struct StatusCommand: ParsableCommand {
         abstract: "Show the current battery clamshell mode."
     )
 
+    @OptionGroup var output: OutputOptions
+
     func run() throws {
         let client = PowerSettingsClient(runner: FoundationProcessRunner())
         let state = try client.currentState()
-        Console().writeLine("Battery clamshell mode: \(state.rawValue)")
+        Console(isQuiet: output.quiet).writeLine(
+            "Battery clamshell mode: \(state.rawValue)"
+        )
     }
 }
