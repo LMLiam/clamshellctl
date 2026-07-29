@@ -88,6 +88,8 @@ jobs:
           restore-keys: swiftpm-${{ runner.os }}-${{ runner.arch }}-
       - name: Resolve Swift dependencies
         run: swift package resolve
+      - name: Test DMG packaging
+        run: bash Tests/Scripts/run-dmg-packaging-tests.sh
       - name: Build debug configuration
         run: swift build
       - name: Build release configuration

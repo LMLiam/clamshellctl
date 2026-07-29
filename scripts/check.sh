@@ -24,6 +24,7 @@ swiftlint lint --strict
 swift test
 swift build
 swift build -c release
+bash Tests/Scripts/run-dmg-packaging-tests.sh
 
 if [[ -d .github/workflows ]]; then
   command -v actionlint >/dev/null || {
