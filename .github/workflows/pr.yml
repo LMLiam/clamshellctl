@@ -18,11 +18,13 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check out trusted base
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
           ref: ${{ github.event.pull_request.base.sha }}
-      - env:
+      - name: Prepare title validator
+        env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           validator="$RUNNER_TEMP/check-conventional-subject.sh"
@@ -33,7 +35,8 @@ jobs:
             printf '%s\n' '#!/bin/bash' 'set -euo pipefail' 'subject="${1:-}"' "verbs='feat|fix|docs|test|build|ci|refactor|perf|style|chore|revert'" 'pattern="^(feat|fix|docs|test|build|ci|refactor|perf|style|chore|revert)[(][a-z0-9][a-z0-9-]*[)]: .*[^.]$"' 'if [[ ! "$subject" =~ $pattern ]]; then' '  echo "Expected verb(area): description without a trailing full stop, received: $subject" >&2' '  exit 1' 'fi' > "$validator"
           fi
           chmod +x "$validator"
-      - env:
+      - name: Validate pull request title
+        env:
           PR_TITLE: ${{ github.event.pull_request.title }}
         run: >-
           "$RUNNER_TEMP/check-conventional-subject.sh" "$PR_TITLE"
@@ -43,12 +46,14 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
-      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - name: Check out pull request
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           fetch-depth: 0
           persist-credentials: false
           ref: ${{ github.event.pull_request.head.sha }}
-      - env:
+      - name: Validate commit subjects
+        env:
           BASE_SHA: ${{ github.event.pull_request.base.sha }}
         run: |
           validator="$RUNNER_TEMP/check-conventional-subject.sh"
