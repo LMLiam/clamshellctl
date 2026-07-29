@@ -1,0 +1,165 @@
+name: Clamshell
+
+options:
+  deploymentTarget:
+    macOS: "26.0"
+
+packages:
+  ClamshellKit:
+    path: .
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "-"
+    DEVELOPMENT_TEAM: ""
+    ARCHS: "arm64 x86_64"
+    ONLY_ACTIVE_ARCH: NO
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: 1
+
+targets:
+  ClamshellApp:
+    type: application
+    platform: macOS
+    sources:
+      - App/ClamshellApp
+    info:
+      path: App/ClamshellApp/Info.plist
+      properties:
+        CFBundleDisplayName: Clamshell
+        CFBundleURLTypes:
+          - CFBundleTypeRole: Viewer
+            CFBundleURLName: uk.co.lmliam.clamshell.control-action
+            CFBundleURLSchemes:
+              - clamshellctl
+        LSApplicationCategoryType: public.app-category.utilities
+        LSUIElement: true
+    dependencies:
+      - target: ClamshellControlProtocol
+        link: true
+        embed: false
+      - target: ClamshellControlModel
+        link: true
+        embed: false
+      - package: ClamshellKit
+        product: ClamshellCore
+      - target: ClamshellControl
+        embed: true
+    settings:
+      base:
+        ENABLE_TESTABILITY: YES
+        PRODUCT_BUNDLE_IDENTIFIER: uk.co.lmliam.clamshell
+        PRODUCT_NAME: Clamshell
+
+  ClamshellControl:
+    type: app-extension
+    platform: macOS
+    sources:
+      - path: App/ClamshellControl
+        excludes:
+          - Intent
+          - Model
+    info:
+      path: App/ClamshellControl/Info.plist
+      properties:
+        CFBundleDisplayName: Clamshell Control
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    dependencies:
+      - target: ClamshellControlIntent
+        link: true
+        embed: false
+      - target: ClamshellControlModel
+        link: true
+        embed: false
+      - package: ClamshellKit
+        product: ClamshellCore
+    settings:
+      base:
+        ENABLE_APP_SANDBOX: YES
+        PRODUCT_BUNDLE_IDENTIFIER: uk.co.lmliam.clamshell.control
+        PRODUCT_NAME: ClamshellControl
+
+  ClamshellControlModel:
+    type: framework.static
+    platform: macOS
+    sources:
+      - App/ClamshellControl/Model
+    dependencies:
+      - package: ClamshellKit
+        product: ClamshellCore
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: uk.co.lmliam.clamshell.control-model
+
+  ClamshellControlProtocol:
+    type: framework.static
+    platform: macOS
+    sources:
+      - App/ClamshellControlProtocol
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: uk.co.lmliam.clamshell.control-protocol
+
+  ClamshellControlIntent:
+    type: framework.static
+    platform: macOS
+    sources:
+      - App/ClamshellControl/Intent
+    dependencies:
+      - target: ClamshellControlModel
+        link: true
+        embed: false
+      - target: ClamshellControlProtocol
+        link: true
+        embed: false
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: uk.co.lmliam.clamshell.control-intent
+
+  ClamshellAppTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - App/ClamshellAppTests
+    dependencies:
+      - target: ClamshellApp
+      - target: ClamshellControlProtocol
+        link: true
+        embed: false
+      - target: ClamshellControlModel
+        link: true
+        embed: false
+      - package: ClamshellKit
+        product: ClamshellCore
+    settings:
+      base:
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Clamshell.app/Contents/MacOS/Clamshell"
+
+  ClamshellControlTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - App/ClamshellControlTests
+    dependencies:
+      - target: ClamshellControlProtocol
+        link: true
+        embed: false
+      - target: ClamshellControlIntent
+        link: true
+        embed: false
+      - target: ClamshellControlModel
+        link: true
+        embed: false
+      - package: ClamshellKit
+        product: ClamshellCore
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES

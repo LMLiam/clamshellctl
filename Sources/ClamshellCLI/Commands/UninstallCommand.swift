@@ -9,12 +9,15 @@ struct UninstallCommand: ParsableCommand {
 
   @OptionGroup var output: OutputOptions
 
+  @Flag(help: "Remove the app-bundled command link when this app owns it.")
+  var removeCommand = false
+
   func run() throws {
     try run(installation: CommandComposition.privilegedInstallation())
   }
 
   func run(installation: PrivilegedInstallation) throws {
-    let result = try installation.uninstall()
+    let result = try installation.uninstall(removeCommand: removeCommand)
     let console = Console(isQuiet: output.quiet)
 
     guard !result.removedPaths.isEmpty else {

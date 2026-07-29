@@ -6,6 +6,25 @@ import Testing
 
 @Suite("Setup commands")
 struct SetupCommandTests {
+  @Test("setup accepts explicit companion command exposure")
+  func setupCommandExposure() throws {
+    let command = try #require(
+      try ClamshellCommand.parseAsRoot(["setup", "--expose-command"]) as? SetupCommand
+    )
+
+    #expect(command.exposeCommand)
+  }
+
+  @Test("uninstall accepts explicit companion command removal")
+  func uninstallCommandRemoval() throws {
+    let command = try #require(
+      try ClamshellCommand.parseAsRoot(["uninstall", "--remove-command"])
+        as? UninstallCommand
+    )
+
+    #expect(command.removeCommand)
+  }
+
   @Test("setup requires an explicit administrator invocation")
   func setupRequiresRoot() throws {
     let command = try #require(try ClamshellCommand.parseAsRoot(["setup"]) as? SetupCommand)
@@ -63,6 +82,10 @@ struct SetupCommandTests {
       throw UnexpectedOperation()
     }
     func replaceItem(at destination: String, withItemAt replacement: String) throws {
+      throw UnexpectedOperation()
+    }
+    func symbolicLinkDestination(at path: String) -> String? { nil }
+    func createSymbolicLink(at path: String, destination: String) throws {
       throw UnexpectedOperation()
     }
     func removeItem(at path: String) throws { throw UnexpectedOperation() }

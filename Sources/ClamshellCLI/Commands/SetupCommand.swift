@@ -9,12 +9,15 @@ struct SetupCommand: ParsableCommand {
 
   @OptionGroup var output: OutputOptions
 
+  @Flag(help: "Expose the app-bundled command at /usr/local/bin/clamshellctl.")
+  var exposeCommand = false
+
   func run() throws {
     try run(installation: CommandComposition.privilegedInstallation())
   }
 
   func run(installation: PrivilegedInstallation) throws {
-    let result = try installation.install()
+    let result = try installation.install(exposeCommand: exposeCommand)
     let console = Console(isQuiet: output.quiet)
 
     if result.didChange {

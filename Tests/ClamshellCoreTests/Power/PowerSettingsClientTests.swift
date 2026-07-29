@@ -5,15 +5,15 @@ import Testing
 
 @Suite("Power settings client")
 struct PowerSettingsClientTests {
-  @Test("reads the battery state with pmset custom settings")
+  @Test("reads the system state with pmset current settings")
   func currentState() throws {
     let runner = RecordingProcessRunner(
       result: ProcessResult(
         standardOutput: """
-          Battery Power:
-           disablesleep         1
-          AC Power:
-           disablesleep         0
+          System-wide power settings:
+           SleepDisabled        1
+          Currently in use:
+           sleep                1
           """,
         standardError: "",
         terminationStatus: 0
@@ -27,7 +27,7 @@ struct PowerSettingsClientTests {
       runner.invocations == [
         ProcessInvocation(
           executable: "/usr/bin/pmset",
-          arguments: ["-g", "custom"]
+          arguments: ["-g"]
         )
       ])
   }

@@ -9,8 +9,10 @@ enum InstallationOperation: Equatable {
   case readText(String)
   case attributes(String)
   case copy(source: String, destination: String)
+  case createSymbolicLink(path: String, destination: String)
   case setOwner(path: String, userID: UInt32, groupID: UInt32)
   case setPermissions(path: String, permissions: UInt16)
+  case symbolicLinkDestination(String)
   case replace(replacement: String, destination: String)
   case write(contents: String, path: String)
   case remove(String)
@@ -41,13 +43,16 @@ final class RecordingInstallationFileSystem:
   private let reportsMatchingContents: Bool
   private var files: [String: String]
   private var fileAttributes: [String: InstalledFileAttributes]
+  private var symbolicLinks: [String: String]
 
   init(
     files: [String: String],
+    symbolicLinks: [String: String] = [:],
     log: InstallationOperationLog,
     reportsMatchingContents: Bool = true
   ) {
     self.files = files
+    self.symbolicLinks = symbolicLinks
     fileAttributes = Dictionary(
       uniqueKeysWithValues: files.keys.map {
         ($0, InstalledFileAttributes(userID: 501, groupID: 20, permissions: 0o755))
@@ -59,7 +64,7 @@ final class RecordingInstallationFileSystem:
 
   func itemExists(at path: String) -> Bool {
     log.append(.itemExists(path))
-    return lock.withLock { files[path] != nil }
+    return lock.withLock { files[path] != nil || symbolicLinks[path] != nil }
   }
 
   func isRegularFile(at path: String) -> Bool {
@@ -154,16 +159,36 @@ final class RecordingInstallationFileSystem:
     }
   }
 
+  func symbolicLinkDestination(at path: String) -> String? {
+    log.append(.symbolicLinkDestination(path))
+    return lock.withLock { symbolicLinks[path] }
+  }
+
+  func createSymbolicLink(at path: String, destination: String) throws {
+    log.append(.createSymbolicLink(path: path, destination: destination))
+    try lock.withLock {
+      guard files[path] == nil, symbolicLinks[path] == nil else {
+        throw ClamshellError.cliLinkConflict
+      }
+      symbolicLinks[path] = destination
+    }
+  }
+
   func removeItem(at path: String) throws {
     log.append(.remove(path))
     lock.withLock {
       _ = files.removeValue(forKey: path)
       _ = fileAttributes.removeValue(forKey: path)
+      _ = symbolicLinks.removeValue(forKey: path)
     }
   }
 
   func contents(at path: String) -> String? {
     lock.withLock { files[path] }
+  }
+
+  func replaceContents(at path: String, with contents: String) {
+    lock.withLock { files[path] = contents }
   }
 }
 

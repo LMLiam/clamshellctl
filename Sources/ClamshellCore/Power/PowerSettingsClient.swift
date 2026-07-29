@@ -11,9 +11,9 @@ public struct PowerSettingsClient: PowerStateReading, PowerStateWriting, Sendabl
   }
 
   public func currentState() throws -> ClamshellState {
-    let result = try runPmset(arguments: ["-g", "custom"])
+    let result = try runPmset(arguments: ["-g"])
 
-    return try parser.batteryState(from: result.standardOutput)
+    return try parser.state(from: result.standardOutput)
   }
 
   public func setState(_ state: ClamshellState) throws {

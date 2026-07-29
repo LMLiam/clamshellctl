@@ -69,6 +69,17 @@ public struct FoundationInstallationFileSystem: InstallationFileSystem {
     }
   }
 
+  public func symbolicLinkDestination(at path: String) -> String? {
+    try? FileManager.default.destinationOfSymbolicLink(atPath: path)
+  }
+
+  public func createSymbolicLink(at path: String, destination: String) throws {
+    try FileManager.default.createSymbolicLink(
+      atPath: path,
+      withDestinationPath: destination
+    )
+  }
+
   public func removeItem(at path: String) throws {
     guard itemExists(at: path) else {
       return
