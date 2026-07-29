@@ -4,11 +4,23 @@ import Foundation
 @MainActor
 final class ControlActionApplicationDelegate: NSObject, NSApplicationDelegate {
   private let handler = ControlActionHandler.live
+  private let instanceCoordinator = RunningApplicationInstanceCoordinator()
+  private var ownsApplicationInstance = false
   private lazy var setupWindowController = SetupWindowController(
     model: SetupComposition.makeModel()
   )
 
   func applicationWillFinishLaunching(_ notification: Notification) {
+    guard
+      ApplicationRuntimePolicy.shouldStartApplication(
+        environment: ProcessInfo.processInfo.environment
+      ),
+      instanceCoordinator.claimCurrentInstance()
+    else {
+      return
+    }
+    ownsApplicationInstance = true
+
     NSAppleEventManager.shared().setEventHandler(
       self,
       andSelector: #selector(handleGetURL(_:withReplyEvent:)),
@@ -18,7 +30,9 @@ final class ControlActionApplicationDelegate: NSObject, NSApplicationDelegate {
   }
 
   func applicationDidFinishLaunching(_ notification: Notification) {
-    if ApplicationLaunchPolicy.shouldShowSetup(userInfo: notification.userInfo) {
+    if ownsApplicationInstance,
+      ApplicationLaunchPolicy.shouldShowSetup(userInfo: notification.userInfo)
+    {
       setupWindowController.show()
     }
   }
@@ -27,13 +41,16 @@ final class ControlActionApplicationDelegate: NSObject, NSApplicationDelegate {
     _ sender: NSApplication,
     hasVisibleWindows flag: Bool
   ) -> Bool {
-    if !flag {
+    if ownsApplicationInstance, !flag {
       setupWindowController.show()
     }
     return false
   }
 
   func applicationWillTerminate(_ notification: Notification) {
+    guard ownsApplicationInstance else {
+      return
+    }
     NSAppleEventManager.shared().removeEventHandler(
       forEventClass: AEEventClass(kInternetEventClass),
       andEventID: AEEventID(kAEGetURL)
