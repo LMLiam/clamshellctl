@@ -28,29 +28,19 @@ derived_data_path="$build_root/DerivedData"
 assembled_app="$build_root/Clamshell.app"
 mkdir -p "$build_root"
 
-swift build \
-  --package-path "$repository_root" \
-  --scratch-path "$swift_build_path" \
-  --configuration release \
-  --arch arm64 \
-  --arch x86_64 \
-  --product clamshellctl
-swift build \
-  --package-path "$repository_root" \
-  --scratch-path "$swift_build_path" \
-  --configuration release \
-  --arch arm64 \
-  --arch x86_64 \
-  --product clamshellctl-helper
+swift_build_arguments=(
+  --package-path "$repository_root"
+  --scratch-path "$swift_build_path"
+  --configuration release
+  --arch arm64
+  --arch x86_64
+)
+
+swift build "${swift_build_arguments[@]}" --product clamshellctl
+swift build "${swift_build_arguments[@]}" --product clamshellctl-helper
 
 swift_bin_path="$(
-  swift build \
-    --package-path "$repository_root" \
-    --scratch-path "$swift_build_path" \
-    --configuration release \
-    --arch arm64 \
-    --arch x86_64 \
-    --show-bin-path
+  swift build "${swift_build_arguments[@]}" --show-bin-path
 )"
 
 (
