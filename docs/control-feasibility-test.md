@@ -1,6 +1,6 @@
 # Control Centre feasibility test
 
-Status: Pass
+Status: Pending
 
 This test checks the ad-hoc-signed Control Centre companion before publication.
 Do not publish the DMG until all manual checks pass.
@@ -47,10 +47,14 @@ xcodegen generate
 xcodebuild -project Clamshell.xcodeproj -scheme ClamshellControlTests \
   -configuration Release -destination 'platform=macOS,arch=arm64' \
   CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= test
+xcodebuild -project Clamshell.xcodeproj -scheme ClamshellAppTests \
+  -configuration Release -destination 'platform=macOS,arch=arm64' \
+  CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= test
 xcodebuild -project Clamshell.xcodeproj -scheme ClamshellApp \
   -configuration Release -destination 'platform=macOS,arch=arm64' \
   CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= build
-codesign --verify --deep --strict --verbose=2 Clamshell.app
+codesign --verify --deep --strict --verbose=2 \
+  .build/feasibility/Clamshell-action-relay-v2.app
 /usr/bin/open 'clamshellctl://battery-clamshell/disable'
 /Applications/Clamshell.app/Contents/MacOS/clamshellctl status
 /usr/bin/open 'clamshellctl://battery-clamshell/enable'

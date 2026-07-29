@@ -993,11 +993,9 @@ Confirm that the diff contains only the approved relay, tests, project
 configuration, and feasibility evidence. Confirm that `.vscode/` is untracked
 and absent from every commit.
 
-- [ ] **Step 4: Request one CodeRabbit review**
+- [ ] **Step 4: Request a code review**
 
-Push and request CodeRabbit only after local verification passes. Use the
-repository's ready-for-review configuration so the free OSS review quota is not
-spent on intermediate commits.
+Request a review only after local verification passes.
 
 - [ ] **Step 5: Open the pull request**
 
