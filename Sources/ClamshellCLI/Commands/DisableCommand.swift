@@ -1,4 +1,5 @@
 import ArgumentParser
+import ClamshellCore
 
 struct DisableCommand: ParsableCommand {
   static let configuration = CommandConfiguration(
@@ -9,7 +10,18 @@ struct DisableCommand: ParsableCommand {
   @OptionGroup var output: OutputOptions
 
   func run() throws {
-    let result = try CommandComposition.clamshellService().set(.disabled)
+    try run(
+      service: CommandComposition.clamshellService(),
+      timerController: CommandComposition.timerController()
+    )
+  }
+
+  func run(
+    service: ClamshellService,
+    timerController: TimerController
+  ) throws {
+    let result = try service.set(.disabled)
+    try timerController.cancel()
     Console(isQuiet: output.quiet).writeTransition(result)
   }
 }

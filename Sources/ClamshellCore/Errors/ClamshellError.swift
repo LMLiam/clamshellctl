@@ -7,6 +7,8 @@ public enum ClamshellError: Error, Equatable, LocalizedError {
   case installationVerificationFailed
   case invalidHelperArguments
   case invalidProcessOutput(executable: String, stream: ProcessOutputStream)
+  case invalidDuration(String)
+  case invalidTimerExecutablePath(String)
   case invalidUsername(String)
   case originalUserUnavailable
   case privilegedHelperUnavailable(setupCommand: String)
@@ -17,6 +19,10 @@ public enum ClamshellError: Error, Equatable, LocalizedError {
   )
   case stateVerificationFailed(expected: ClamshellState, actual: ClamshellState)
   case sudoersValidationFailed
+  case timerCalendarConversionFailed
+  case timerCleanupFailed(String)
+  case timedEnablementRollbackFailed(scheduling: String, rollback: String)
+  case unsupportedTimerMetadataVersion(Int)
   case unrecognisedPowerSettings
 
   public var errorDescription: String? {
@@ -33,6 +39,10 @@ public enum ClamshellError: Error, Equatable, LocalizedError {
       "Invalid privileged helper arguments."
     case let .invalidProcessOutput(executable, stream):
       "Unable to decode \(stream.rawValue) from \(executable)."
+    case let .invalidDuration(value):
+      "Duration '\(value)' is invalid. Use whole minutes (m), hours (h), or days (d), up to 30d."
+    case let .invalidTimerExecutablePath(path):
+      "The timer executable path is not absolute: \(path)"
     case .invalidUsername:
       "The original account name is unavailable or unsafe."
     case .originalUserUnavailable:
@@ -49,6 +59,14 @@ public enum ClamshellError: Error, Equatable, LocalizedError {
       "Battery clamshell mode verification failed: expected \(expected.rawValue), found \(actual.rawValue)."
     case .sudoersValidationFailed:
       "The generated sudoers policy failed validation."
+    case .timerCalendarConversionFailed:
+      "The timer deadline cannot be converted to calendar components."
+    case let .timerCleanupFailed(path):
+      "The timer file could not be removed: \(path)"
+    case let .timedEnablementRollbackFailed(scheduling, rollback):
+      "Timer setup failed: \(scheduling) Rollback failed: \(rollback)"
+    case let .unsupportedTimerMetadataVersion(version):
+      "Timer metadata schema version \(version) is not supported."
     case .unrecognisedPowerSettings:
       "Unable to read the Battery Power section from pmset."
     }
