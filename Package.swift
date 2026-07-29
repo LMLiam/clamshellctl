@@ -13,11 +13,7 @@ let package = Package(
     .package(
       url: "https://github.com/apple/swift-argument-parser",
       from: "1.8.0"
-    ),
-    .package(
-      url: "https://github.com/SimplyDanny/SwiftLintPlugins",
-      exact: "0.63.2"
-    ),
+    )
   ],
   targets: [
     .target(name: "ClamshellCore"),

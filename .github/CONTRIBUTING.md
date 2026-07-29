@@ -2,11 +2,12 @@
 
 ## Prerequisites
 
-You need macOS, Xcode 26.6 or later, Swift 6.3 or later, and
-[actionlint](https://github.com/rhysd/actionlint). Install actionlint with:
+You need macOS, Xcode 26.6 or later, and Swift 6.3 or later. You also need
+SwiftLint 0.65.0 and [actionlint](https://github.com/rhysd/actionlint).
+Install the development tools with:
 
 ```bash
-brew install actionlint
+brew install actionlint swiftlint
 ```
 
 The future companion app also requires

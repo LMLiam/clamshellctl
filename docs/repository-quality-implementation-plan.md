@@ -10,7 +10,7 @@ interactions behind protocols, and give formatting, linting, testing, security,
 and repository policy separate enforceable owners.
 
 **Tech Stack:** Swift 6.3, Swift Package Manager, Swift Testing,
-`swift-format`, SwiftLint 0.63.2, GitHub Actions, CodeQL, GitGuardian,
+`swift-format`, SwiftLint 0.65.0, GitHub Actions, CodeQL, GitGuardian,
 release-please v5, Dependabot, `actionlint`, and GitHub rulesets.
 
 ---
@@ -482,27 +482,23 @@ git commit -m "style(swift): adopt Google formatting"
 **Files:**
 
 - Modify: `Package.swift`
-- Modify: `Package.resolved`
 - Modify: `.swift-format`
 - Create: `.swiftlint.yml`
 - Modify: public declarations under `Sources/`
 
-- [ ] **Step 1: Pin the SwiftLint command plugin**
+- [ ] **Step 1: Require standalone SwiftLint**
 
-Add this exact dependency after `swift-argument-parser` in `Package.swift`:
-
-```swift
-.package(
-  url: "https://github.com/SimplyDanny/SwiftLintPlugins",
-  exact: "0.63.2"
-),
-```
-
-Do not attach a build-tool plugin to any target. Resolve the exact dependency:
+Use SwiftLint 0.65.0 as a standalone tool. Do not add lint tools to the
+production package graph. The GitHub `macos-26` runner includes this version.
+Install it locally with Homebrew:
 
 ```bash
-swift package resolve
+brew install swiftlint
+test "$(swiftlint version)" = "0.65.0"
 ```
+
+Do not add SwiftLint or its plugins to `Package.swift`. Production builds do
+not need lint tools. CodeQL analysis does not need lint tools.
 
 The CLI test target imports ArgumentParser for command parsing, so it declares
 the `ArgumentParser` product directly as well as depending on `ClamshellCLI`.
@@ -598,7 +594,7 @@ reporter: xcode
 Run:
 
 ```bash
-swift package plugin --allow-writing-to-package-directory swiftlint --strict
+swiftlint lint --strict
 ```
 
 Expected: non-zero until every reported correctness, naming, and complexity
@@ -632,7 +628,7 @@ Run after each group of fixes:
 ```bash
 swift format --recursive --in-place Sources Tests Package.swift
 swift format lint --recursive --strict Sources Tests Package.swift
-swift package plugin --allow-writing-to-package-directory swiftlint --strict
+swiftlint lint --strict
 swift test
 ```
 
@@ -643,7 +639,7 @@ Expected: both linters exit 0 and all 33 tests pass.
 Run:
 
 ```bash
-git add .swift-format .swiftlint.yml Package.swift Package.resolved Sources Tests
+git add .swift-format .swiftlint.yml Package.swift Sources Tests
 git commit -m "build(lint): enforce Swift conventions"
 ```
 
@@ -704,7 +700,7 @@ if [[ -d App ]]; then
 fi
 
 swift format lint --recursive --strict "${swift_paths[@]}"
-swift package plugin --allow-writing-to-package-directory swiftlint --strict
+swiftlint lint --strict
 swift test
 swift build
 swift build -c release
@@ -789,7 +785,7 @@ jobs:
         with:
           persist-credentials: false
       - run: swift format lint --recursive --strict Sources Tests Package.swift
-      - run: swift package plugin --allow-writing-to-package-directory swiftlint --strict
+      - run: swiftlint lint --strict
 
   tests:
     name: Tests

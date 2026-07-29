@@ -24,22 +24,12 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - name: Restore Swift dependencies
-        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-        with:
-          path: |
-            .build/artifacts
-            .build/checkouts
-            .build/repositories
-            ~/Library/Caches/org.swift.swiftpm
-          key: swiftpm-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.resolved') }}
-          restore-keys: swiftpm-${{ runner.os }}-${{ runner.arch }}-
-      - name: Resolve Swift dependencies
-        run: swift package resolve
       - name: Check Swift formatting
         run: swift format lint --recursive --strict Sources Tests Package.swift
       - name: Run SwiftLint
-        run: swift package plugin --allow-writing-to-package-directory swiftlint --strict
+        run: |
+          test "$(swiftlint version)" = "0.65.0"
+          swiftlint lint --strict
 
   tests:
     name: Tests

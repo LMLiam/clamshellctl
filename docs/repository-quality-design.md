@@ -22,10 +22,11 @@ tools enforce separate parts of that standard:
   formatting cannot express. Its checked-in `.swiftlint.yml` covers naming,
   API hygiene, unsafe constructs, complexity, and selected opt-in rules.
 
-The SwiftLint command plugin is an exact Swift Package Manager dependency. The
-project does not attach it as an Xcode build plugin. Local development and CI
-therefore use the same version without an Xcode trust prompt. Dependabot keeps
-the pinned version current through normal pull requests.
+SwiftLint is a standalone development tool. It is not a production package
+dependency. Local verification requires version 0.65.0. The GitHub
+`macos-26` runner also includes this version. This configuration keeps lint
+tools out of production builds and CodeQL builds. Local checks and CI use the
+same rules.
 
 SwiftLint configuration must be deliberate. The project does not enable every
 opt-in rule, duplicate formatting rules owned by `swift-format`, or accept a

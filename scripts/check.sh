@@ -10,8 +10,17 @@ if [[ -d App ]]; then
   swift_paths+=(App)
 fi
 
+command -v swiftlint >/dev/null || {
+  echo "SwiftLint is required: brew install swiftlint" >&2
+  exit 1
+}
+[[ "$(swiftlint version)" == "0.65.0" ]] || {
+  echo "SwiftLint 0.65.0 is required" >&2
+  exit 1
+}
+
 swift format lint --recursive --strict "${swift_paths[@]}"
-swift package plugin --allow-writing-to-package-directory swiftlint --strict
+swiftlint lint --strict
 swift test
 swift build
 swift build -c release
