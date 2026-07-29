@@ -29,6 +29,11 @@ targets:
       path: App/ClamshellApp/Info.plist
       properties:
         CFBundleDisplayName: Clamshell
+        CFBundleURLTypes:
+          - CFBundleTypeRole: Viewer
+            CFBundleURLName: uk.co.lmliam.clamshell.control-action
+            CFBundleURLSchemes:
+              - clamshellctl
         LSApplicationCategoryType: public.app-category.utilities
         LSUIElement: true
     dependencies:

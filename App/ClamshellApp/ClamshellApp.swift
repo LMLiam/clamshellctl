@@ -2,12 +2,12 @@ import SwiftUI
 
 @main
 struct ClamshellApp: App {
-  @State private var setupModel = SetupComposition.makeModel()
+  @NSApplicationDelegateAdaptor(ControlActionApplicationDelegate.self)
+  private var applicationDelegate
 
   var body: some Scene {
-    Window("Clamshell", id: "setup") {
-      SetupView(model: setupModel)
+    Settings {
+      EmptyView()
     }
-    .windowResizability(.contentSize)
   }
 }
