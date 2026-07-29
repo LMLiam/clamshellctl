@@ -35,12 +35,16 @@ targets:
       - target: ClamshellControlProtocol
         link: true
         embed: false
+      - target: ClamshellControlModel
+        link: true
+        embed: false
       - package: ClamshellKit
         product: ClamshellCore
       - target: ClamshellControl
         embed: true
     settings:
       base:
+        ENABLE_TESTABILITY: YES
         PRODUCT_BUNDLE_IDENTIFIER: uk.co.lmliam.clamshell
         PRODUCT_NAME: Clamshell
 
@@ -118,6 +122,9 @@ targets:
     dependencies:
       - target: ClamshellApp
       - target: ClamshellControlProtocol
+        link: true
+        embed: false
+      - target: ClamshellControlModel
         link: true
         embed: false
       - package: ClamshellKit
