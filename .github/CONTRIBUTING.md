@@ -52,6 +52,17 @@ directories.
 Fix lint findings in code where practical. A SwiftLint suppression must have a
 narrow scope and an adjacent explanation of why the rule does not apply.
 
+## Documentation style
+
+Use ASD-STE100 Simplified Technical English for all documentation. Use British
+English spelling. Use short sentences and active voice. Give one instruction
+in each sentence. Use one term for each item or action.
+
+You can use an unapproved term when technical accuracy requires it. Examples
+include product names, commands, code identifiers, API names, quoted interface
+text, and standard names. Do not replace a precise technical term with an
+ambiguous word.
+
 ## Commits
 
 Every commit and pull-request title must use:

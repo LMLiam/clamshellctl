@@ -22,5 +22,6 @@
 
 - [ ] `scripts/check.sh` passes.
 - [ ] User and contributor documentation matches the change.
+- [ ] Documentation uses ASD-STE100 Simplified Technical English.
 - [ ] Every commit uses `verb(area): description`.
 - [ ] Privileged behaviour is covered by safe tests rather than live system mutation.

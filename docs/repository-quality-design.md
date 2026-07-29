@@ -39,6 +39,16 @@ files: UTF-8, LF endings, a final newline, trailing-whitespace handling, and
 two-space indentation where appropriate. It complements the Swift tools; it is
 not the source of truth for Swift syntax formatting.
 
+## Documentation style
+
+All documentation uses ASD-STE100 Simplified Technical English and British
+English spelling. Sentences are short and use active voice. Each instruction
+contains one action. Each item or action has one term.
+
+Technical accuracy has priority over the controlled vocabulary. Product names,
+commands, code identifiers, API names, quoted interface text, and standard
+names can use their required terms.
+
 ## Source organisation
 
 Directories describe responsibilities rather than current consumers. The core

@@ -9,7 +9,10 @@ reviews:
   high_level_summary_in_walkthrough: true
   high_level_summary_instructions: >-
     Summarise user-visible behaviour, security boundaries, and verification in
-    concise British English. Omit release-note filler.
+    concise British English. Use ASD-STE100 Simplified Technical English for
+    documentation. Keep required technical terms, product names, commands,
+    identifiers, quoted interface text, and standard names. Omit release-note
+    filler.
   review_status: true
   review_details: false
   commit_status: true
@@ -91,9 +94,11 @@ reviews:
         fail-closed behaviour. Prefer portable shell accepted by ShellCheck.
     - path: "**/*.md"
       instructions: |
-        Check technical accuracy against current behaviour. Use concise British
-        English. Reject stale paths, unsupported claims, and internal AI
-        process metadata.
+        Check technical accuracy against current behaviour. Require ASD-STE100
+        Simplified Technical English and British English spelling. Permit
+        required technical terms, product names, commands, identifiers, quoted
+        interface text, and standard names. Reject stale paths, unsupported
+        claims, and internal AI process metadata.
 
   tools:
     swiftlint:
