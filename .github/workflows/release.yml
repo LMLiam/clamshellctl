@@ -43,6 +43,7 @@ jobs:
     runs-on: macos-26
     timeout-minutes: 30
     permissions:
+      # gh release upload adds the DMG and checksum to the release.
       contents: write
     steps:
       - name: Check out release
