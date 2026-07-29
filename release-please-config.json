@@ -13,6 +13,10 @@
         {
           "type": "generic",
           "path": "Sources/ClamshellCore/BuildVersion.swift"
+        },
+        {
+          "type": "generic",
+          "path": "project.yml"
         }
       ],
       "changelog-sections": [
