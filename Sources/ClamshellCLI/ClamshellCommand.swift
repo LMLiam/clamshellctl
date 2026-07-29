@@ -14,6 +14,7 @@ struct ClamshellCommand: ParsableCommand {
       ToggleCommand.self,
       SetupCommand.self,
       UninstallCommand.self,
+      TimerCheckCommand.self,
     ],
     defaultSubcommand: StatusCommand.self
   )

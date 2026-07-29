@@ -1,4 +1,5 @@
 import ClamshellCore
+import Darwin
 import Foundation
 
 enum CommandComposition {
@@ -11,6 +12,19 @@ enum CommandComposition {
   }
 
   static func privilegedInstallation() throws -> PrivilegedInstallation {
+    try PrivilegedInstallation(executablePath: executablePath())
+  }
+
+  static func timerController() -> TimerController {
+    TimerController(
+      paths: TimerPaths(
+        homeDirectory: FileManager.default.homeDirectoryForCurrentUser.path
+      ),
+      userID: getuid()
+    )
+  }
+
+  static func executablePath() throws -> String {
     guard
       let executablePath = Bundle.main.executableURL?
         .resolvingSymlinksInPath()
@@ -18,6 +32,6 @@ enum CommandComposition {
     else {
       throw ClamshellError.executablePathUnavailable
     }
-    return PrivilegedInstallation(executablePath: executablePath)
+    return executablePath
   }
 }
