@@ -4,65 +4,63 @@ import Testing
 
 @Suite("pmset parser")
 struct PowerSettingsParserTests {
-  @Test("reads enabled from Battery Power")
+  @Test("reads the enabled system state")
   func enabled() throws {
     let output = """
-      Battery Power:
+      System-wide power settings:
+       SleepDisabled        1
+      Currently in use:
        sleep                1
-       disablesleep         1
-      AC Power:
-       sleep                1
-       disablesleep         0
       """
 
-    #expect(try PowerSettingsParser().batteryState(from: output) == .enabled)
+    #expect(try PowerSettingsParser().state(from: output) == .enabled)
   }
 
-  @Test("reads disabled from Battery Power")
+  @Test("reads the disabled system state")
   func disabled() throws {
     let output = """
-      Battery Power:
+      System-wide power settings:
+       SleepDisabled        0
+      Currently in use:
        sleep                1
-       disablesleep         0
-      AC Power:
-       disablesleep         1
       """
 
-    #expect(try PowerSettingsParser().batteryState(from: output) == .disabled)
+    #expect(try PowerSettingsParser().state(from: output) == .disabled)
   }
 
-  @Test("treats an absent battery disablesleep key as disabled")
-  func absentMeansDisabled() throws {
+  @Test("rejects output without a system state")
+  func missingState() {
     let output = """
-      Battery Power:
+      Currently in use:
        sleep                1
-      AC Power:
-       disablesleep         1
       """
 
-    #expect(try PowerSettingsParser().batteryState(from: output) == .disabled)
-  }
-
-  @Test("rejects output without a Battery Power section")
-  func missingBatterySection() {
     #expect(throws: ClamshellError.self) {
-      try PowerSettingsParser().batteryState(
-        from: "AC Power:\n disablesleep 1"
-      )
+      try PowerSettingsParser().state(from: output)
     }
   }
 
-  @Test("rejects an unexpected battery disablesleep value")
+  @Test("rejects an unexpected system state value")
   func unexpectedValue() {
     let output = """
-      Battery Power:
-       disablesleep         2
-      AC Power:
-       disablesleep         0
+      System-wide power settings:
+       SleepDisabled        2
       """
 
     #expect(throws: ClamshellError.self) {
-      try PowerSettingsParser().batteryState(from: output)
+      try PowerSettingsParser().state(from: output)
+    }
+  }
+
+  @Test("rejects a malformed system state")
+  func malformedValue() {
+    let output = """
+      System-wide power settings:
+       SleepDisabled        1 unexpected
+      """
+
+    #expect(throws: ClamshellError.self) {
+      try PowerSettingsParser().state(from: output)
     }
   }
 }
