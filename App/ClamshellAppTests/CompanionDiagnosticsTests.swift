@@ -6,8 +6,8 @@ import Testing
 
 @Suite("Companion diagnostics")
 struct CompanionDiagnosticsTests {
-  @Test("reports a missing payload when either bundled executable is absent")
-  func missingPayload() throws {
+  @Test("reports recoverable incomplete files when only the helper is absent")
+  func missingHelper() throws {
     let fixture = try CompanionBundleFixture()
     defer { fixture.remove() }
     try fixture.createCLI()
@@ -17,7 +17,24 @@ struct CompanionDiagnosticsTests {
       installation: StubInstallationStatusReader(status: .ready)
     )
 
-    #expect(try diagnostics.currentState() == .missingBundlePayload)
+    #expect(
+      try diagnostics.currentState() == .missingBundlePayload(commandAvailable: true)
+    )
+  }
+
+  @Test("reports required reinstallation when the CLI is absent")
+  func missingCLI() throws {
+    let fixture = try CompanionBundleFixture()
+    defer { fixture.remove() }
+
+    let diagnostics = CompanionDiagnostics(
+      bundleURL: fixture.bundleURL,
+      installation: StubInstallationStatusReader(status: .ready)
+    )
+
+    #expect(
+      try diagnostics.currentState() == .missingBundlePayload(commandAvailable: false)
+    )
   }
 
   @Test(

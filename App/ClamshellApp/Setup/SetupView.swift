@@ -49,10 +49,10 @@ struct SetupView: View {
 
   @ViewBuilder
   private var setup: some View {
-    if model.state != .ready {
+    if model.state.allowsSetup {
       VStack(alignment: .leading, spacing: 12) {
         Toggle("Install the Terminal command", isOn: $model.exposeCommand)
-          .disabled(model.state == .missingBundlePayload || model.isWorking)
+          .disabled(model.isWorking)
         Text("This optional setting adds clamshellctl to /usr/local/bin.")
           .font(.caption)
           .foregroundStyle(.secondary)
@@ -61,7 +61,7 @@ struct SetupView: View {
           Task { await model.setUp() }
         }
         .buttonStyle(.borderedProminent)
-        .disabled(model.state == .missingBundlePayload || model.isWorking)
+        .disabled(model.isWorking)
       }
     }
   }
@@ -96,7 +96,7 @@ struct SetupView: View {
 
         Spacer()
 
-        if model.state == .ready || model.state == .invalidHelper {
+        if model.state.allowsPrivilegedRemoval {
           Button("Remove Privileged Setup", role: .destructive) {
             Task { await model.removePrivilegedSetup() }
           }
@@ -129,8 +129,10 @@ private extension SetupState {
       "The Control Centre control is ready."
     case .invalidHelper:
       "Run setup again to replace the invalid helper files."
-    case .missingBundlePayload:
-      "Install a complete Clamshell app and try again."
+    case .missingBundlePayload(commandAvailable: true):
+      "Remove the privileged setup. Then reinstall a complete Clamshell app."
+    case .missingBundlePayload(commandAvailable: false):
+      "Reinstall a complete Clamshell app and try again."
     }
   }
 
@@ -155,4 +157,5 @@ private extension SetupState {
       .orange
     }
   }
+
 }

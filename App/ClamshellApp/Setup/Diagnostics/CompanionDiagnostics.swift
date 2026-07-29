@@ -17,8 +17,12 @@ struct CompanionDiagnostics: CompanionDiagnosing {
   }
 
   func currentState() throws -> SetupState {
-    guard hasRequiredPayload else {
-      return .missingBundlePayload
+    let commandAvailable = payloadInspector.isRegularFile(at: commandURL)
+    guard commandAvailable else {
+      return .missingBundlePayload(commandAvailable: false)
+    }
+    guard payloadInspector.isRegularFile(at: helperPayloadURL) else {
+      return .missingBundlePayload(commandAvailable: true)
     }
 
     return switch try installation.currentStatus() {
@@ -31,14 +35,11 @@ struct CompanionDiagnostics: CompanionDiagnosing {
     }
   }
 
-  private var hasRequiredPayload: Bool {
-    requiredPayloadURLs.allSatisfy(payloadInspector.isRegularFile)
+  private var commandURL: URL {
+    bundleURL.appendingPathComponent("Contents/MacOS/clamshellctl")
   }
 
-  private var requiredPayloadURLs: [URL] {
-    [
-      bundleURL.appendingPathComponent("Contents/MacOS/clamshellctl"),
-      bundleURL.appendingPathComponent("Contents/Resources/clamshellctl-helper"),
-    ]
+  private var helperPayloadURL: URL {
+    bundleURL.appendingPathComponent("Contents/Resources/clamshellctl-helper")
   }
 }

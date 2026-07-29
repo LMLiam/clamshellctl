@@ -12,7 +12,8 @@ struct SetupModelTests {
       SetupState.needsSetup,
       .ready,
       .invalidHelper,
-      .missingBundlePayload,
+      .missingBundlePayload(commandAvailable: true),
+      .missingBundlePayload(commandAvailable: false),
     ]
   )
   func diagnosticState(state: SetupState) {
