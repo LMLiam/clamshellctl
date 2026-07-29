@@ -40,7 +40,7 @@ struct ControlActionHandlerTests {
 
     #expect(outcome == .ignored)
     #expect(power.requestedStates.isEmpty)
-    #expect(reloads.count == 0)
+    #expect(reloads.isEmpty)
   }
 
   @Test("reports a helper failure and reloads the real state")
@@ -105,6 +105,10 @@ private final class RecordingPower: PowerStateReading, PowerStateWriting, Sendab
 
 private final class ReloadRecorder: Sendable {
   private let storage = Mutex(0)
+
+  var isEmpty: Bool {
+    storage.withLock { $0 == 0 }
+  }
 
   var count: Int {
     storage.withLock { $0 }

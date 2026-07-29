@@ -1,6 +1,6 @@
+import ClamshellControlProtocol
 import Foundation
 import Testing
-import ClamshellControlProtocol
 
 @Suite("Control action request")
 struct ControlActionRequestTests {

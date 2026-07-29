@@ -28,10 +28,18 @@ public enum ControlActionRequest: Equatable, Sendable {
     }
   }
 
-  private static let enableURL = URL(
-    string: "clamshellctl://battery-clamshell/enable"
-  )!
-  private static let disableURL = URL(
-    string: "clamshellctl://battery-clamshell/disable"
-  )!
+  private static let enableURL = makeURL(path: "/enable")
+  private static let disableURL = makeURL(path: "/disable")
+
+  private static func makeURL(path: String) -> URL {
+    var components = URLComponents()
+    components.scheme = "clamshellctl"
+    components.host = "battery-clamshell"
+    components.path = path
+
+    guard let url = components.url else {
+      preconditionFailure("The static control action URL is invalid")
+    }
+    return url
+  }
 }

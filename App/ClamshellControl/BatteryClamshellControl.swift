@@ -1,5 +1,5 @@
-import ClamshellControlModel
 import ClamshellControlIntent
+import ClamshellControlModel
 import SwiftUI
 import WidgetKit
 
