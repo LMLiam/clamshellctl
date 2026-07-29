@@ -5,17 +5,23 @@ import SwiftUI
 final class SetupWindowController {
   private let window: NSWindow
 
-  init(model: SetupModel) {
+  convenience init(model: SetupModel) {
     let content = NSHostingController(rootView: SetupView(model: model))
-    window = NSWindow(contentViewController: content)
+    let window = NSWindow(contentViewController: content)
     window.title = "Clamshell"
     window.styleMask = [.titled, .closable]
     window.isReleasedWhenClosed = false
     window.center()
+    self.init(window: window)
+  }
+
+  init(window: NSWindow) {
+    self.window = window
   }
 
   func show() {
-    window.makeKeyAndOrderFront(nil)
     NSApp.activate()
+    window.makeKeyAndOrderFront(nil)
+    window.orderFrontRegardless()
   }
 }
