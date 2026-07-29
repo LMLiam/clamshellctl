@@ -1,8 +1,9 @@
+import ClamshellControlModel
 import SwiftUI
 import WidgetKit
 
 struct BatteryClamshellControl: ControlWidget {
-  static let kind = "uk.co.lmliam.clamshell.control.battery"
+  nonisolated static let kind = "uk.co.lmliam.clamshell.control.battery"
 
   var body: some ControlWidgetConfiguration {
     StaticControlConfiguration(kind: Self.kind, provider: Provider()) { isEnabled in
@@ -19,6 +20,6 @@ private struct Provider: ControlValueProvider {
   let previewValue = false
 
   func currentValue() async throws -> Bool {
-    false
+    try ControlModel.live.currentValue()
   }
 }

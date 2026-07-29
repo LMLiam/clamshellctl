@@ -1,4 +1,6 @@
 import AppIntents
+import ClamshellControlModel
+import WidgetKit
 
 struct SetBatteryClamshellIntent: SetValueIntent {
   static let title: LocalizedStringResource = "Set battery clamshell mode"
@@ -10,6 +12,8 @@ struct SetBatteryClamshellIntent: SetValueIntent {
   init() {}
 
   func perform() async throws -> some IntentResult {
-    .result()
+    try ControlModel.live.setValue(value)
+    ControlCenter.shared.reloadControls(ofKind: BatteryClamshellControl.kind)
+    return .result()
   }
 }

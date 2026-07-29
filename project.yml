@@ -45,7 +45,9 @@ targets:
     type: app-extension
     platform: macOS
     sources:
-      - App/ClamshellControl
+      - path: App/ClamshellControl
+        excludes:
+          - Model
     info:
       path: App/ClamshellControl/Info.plist
       properties:
@@ -53,12 +55,28 @@ targets:
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
     dependencies:
+      - target: ClamshellControlModel
+        link: true
+        embed: false
       - package: ClamshellKit
         product: ClamshellCore
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: uk.co.lmliam.clamshell.control
         PRODUCT_NAME: ClamshellControl
+
+  ClamshellControlModel:
+    type: framework.static
+    platform: macOS
+    sources:
+      - App/ClamshellControl/Model
+    dependencies:
+      - package: ClamshellKit
+        product: ClamshellCore
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: uk.co.lmliam.clamshell.control-model
 
   ClamshellAppTests:
     type: bundle.unit-test
@@ -67,6 +85,13 @@ targets:
       - App/ClamshellAppTests
     dependencies:
       - target: ClamshellApp
+      - package: ClamshellKit
+        product: ClamshellCore
+    settings:
+      base:
+        BUNDLE_LOADER: "$(TEST_HOST)"
+        GENERATE_INFOPLIST_FILE: YES
+        TEST_HOST: "$(BUILT_PRODUCTS_DIR)/Clamshell.app/Contents/MacOS/Clamshell"
 
   ClamshellControlTests:
     type: bundle.unit-test
@@ -74,4 +99,11 @@ targets:
     sources:
       - App/ClamshellControlTests
     dependencies:
-      - target: ClamshellControl
+      - target: ClamshellControlModel
+        link: true
+        embed: false
+      - package: ClamshellKit
+        product: ClamshellCore
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
