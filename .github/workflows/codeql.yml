@@ -41,6 +41,8 @@ jobs:
           restore-keys: swiftpm-${{ runner.os }}-${{ runner.arch }}-
       - name: Resolve Swift dependencies
         run: swift package resolve
+      - name: Build external Swift dependencies
+        run: swift build --target ArgumentParser
       - name: Initialise CodeQL
         uses: github/codeql-action/init@e4fba868fa4b1b91e1fdab776edc8cfbe6e9fb81 # v4
         with:
