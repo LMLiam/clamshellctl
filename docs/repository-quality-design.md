@@ -189,6 +189,30 @@ publishes results through GitHub code scanning.
 repository's release-please conventions. The same structure is used for local
 commits.
 
+### Automated review
+
+`.coderabbit.yaml` is the version-controlled source of truth for automated
+review. [CodeRabbit][coderabbit-config] uses British English and an assertive,
+high-signal profile. It prioritises correctness, security, maintainability, and
+idiomatic Swift. Review comments must identify a concrete consequence and must
+not request cosmetic churn, redundant comments, or documentation for
+self-explanatory implementation details.
+
+CodeRabbit reviews a pull request when it becomes ready for review. It does not
+review drafts or rerun automatically after each push. Maintainers batch fixes
+and request a manual follow-up review when the result justifies another review.
+Actionable findings use GitHub's request changes workflow.
+
+The walkthrough remains concise and collapsed. It omits poems, fortunes,
+sequence diagrams, effort estimates, suggested labels or reviewers, and prompts
+for automated code generation. Swift, tests, privileged code, workflows, shell
+scripts, and documentation receive focused path-specific instructions.
+
+The docstring coverage and generation features are disabled. The deterministic
+`pr.yml` check owns title syntax, so CodeRabbit does not duplicate it with a
+subjective title check. Description and linked-issue checks remain advisory.
+SwiftLint reads `.swiftlint.yml`, and ShellCheck remains enabled.
+
 ### Releases and dependency updates
 
 `release.yml` uses release-please to create release pull requests and GitHub
@@ -264,5 +288,6 @@ The quality pass is complete when:
    issues.
 
 [codeql-compiled]: https://docs.github.com/en/code-security/concepts/code-scanning/codeql/codeql-for-compiled-languages
+[coderabbit-config]: https://docs.coderabbit.ai/reference/configuration
 [google-swift-style]: https://google.github.io/swift/
 [swiftlint]: https://github.com/realm/SwiftLint
