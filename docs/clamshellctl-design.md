@@ -103,7 +103,7 @@ Homebrew installs the public CLI and an unprivileged helper payload. The compani
 
 The documented setup command runs the installed CLI with `sudo`, using its explicit Homebrew path where the administrator's secure path does not include Homebrew. Setup then:
 
-- copies the helper to `/usr/local/libexec/clamshellctl-helper`;
+- copies the helper to `/Library/PrivilegedHelperTools/clamshellctl-helper`;
 - sets ownership to `root:wheel` and mode `0755`;
 - writes `/etc/sudoers.d/clamshellctl` with mode `0440`;
 - permits the current user to run only the helper's exact `enable` and `disable` commands without a password;
@@ -160,30 +160,45 @@ Diagnostic command output is included only when it is safe and useful. No operat
 clamshellctl/
 ├── .github/
 │   ├── ISSUE_TEMPLATE/
-│   └── workflows/
+│   ├── workflows/
+│   ├── CODEOWNERS
+│   ├── CONTRIBUTING.md
+│   ├── SECURITY.md
+│   └── SUPPORT.md
 ├── Sources/
 │   ├── ClamshellCore/
+│   │   ├── Errors/
+│   │   ├── Power/
+│   │   ├── Privilege/Installation/
+│   │   ├── Process/
+│   │   ├── State/
+│   │   └── Timing/              # Added with timed enablement
 │   ├── ClamshellCLI/
+│   │   └── Commands/
 │   └── ClamshellHelper/
 ├── App/
 │   ├── ClamshellApp/
 │   └── ClamshellControl/
-├── project.yml
 ├── Tests/
-│   └── ClamshellCoreTests/
+│   ├── ClamshellCoreTests/
+│   │   ├── Power/
+│   │   ├── Privilege/Installation/
+│   │   ├── Process/
+│   │   ├── State/
+│   │   └── Support/
+│   └── ClamshellCLITests/Commands/
 ├── docs/
 │   ├── assets/
 │   └── clamshellctl-design.md
+├── scripts/
 ├── .release-please-manifest.json
 ├── CHANGELOG.md
-├── CONTRIBUTING.md
 ├── LICENSE
 ├── Package.swift
 ├── README.md
-├── SECURITY.md
-├── SUPPORT.md
 ├── release-please-config.json
-└── version.txt
+├── version.txt
+└── project.yml                 # Added with the native companion
 ```
 
 The approved transparent artwork is stored as `docs/assets/clamshellctl.png` and used near the top of the README.
@@ -260,7 +275,7 @@ The initial public setup includes:
 
 Initial issues cover the core CLI, privileged setup, timed enablement, native companion feasibility, Control Centre integration, DMG packaging, documentation, Homebrew publication, and release automation. A later issue covers USB-C disconnect automation.
 
-After the repository is public and its README is ready, `LMLiam/LMLiam` is updated to feature `clamshellctl` on the GitHub profile.
+After the first public release succeeds, `LMLiam/LMLiam` is updated to feature `clamshellctl` on the GitHub profile.
 
 ## Success criteria
 

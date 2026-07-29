@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report a security vulnerability
+    url: https://github.com/LMLiam/clamshellctl/security/advisories/new
+    about: Send vulnerability details privately to the maintainer.
+  - name: Support and usage questions
+    url: https://github.com/LMLiam/clamshellctl/issues/new?template=question.yml
+    about: Ask about macOS, Homebrew, or clamshellctl usage.

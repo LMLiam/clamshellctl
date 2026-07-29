@@ -1,0 +1,50 @@
+name: Support question
+description: Ask about macOS, Homebrew, or clamshellctl usage.
+title: "question(area): "
+labels:
+  - question
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not include passwords, tokens, private keys, complete environment
+        dumps, or unrelated personal information.
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: Explain what you are trying to do and where you are stuck.
+    validations:
+      required: true
+  - type: input
+    id: macos-version
+    attributes:
+      label: macOS version
+      placeholder: "26.6"
+    validations:
+      required: true
+  - type: dropdown
+    id: installation
+    attributes:
+      label: Installation method
+      options:
+        - Homebrew
+        - Companion-app DMG
+        - Source checkout
+        - Not installed
+    validations:
+      required: true
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Safe diagnostic output
+      description: Include concise command output when it helps explain the question.
+    validations:
+      required: false
+  - type: checkboxes
+    id: safety
+    attributes:
+      label: Safety check
+      options:
+        - label: I removed passwords, tokens, private keys, and unrelated personal data.
+          required: true

@@ -1,0 +1,75 @@
+name: PR
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, edited, reopened, synchronize]
+
+concurrency:
+  group: pr-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  title:
+    name: Title
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out trusted base
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.base.sha }}
+      - name: Prepare title validator
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          validator="$RUNNER_TEMP/check-conventional-subject.sh"
+          if git cat-file -e "$BASE_SHA:scripts/check-conventional-subject.sh" 2>/dev/null; then
+            git show "$BASE_SHA:scripts/check-conventional-subject.sh" > "$validator"
+          else
+            # shellcheck disable=SC2016
+            printf '%s\n' '#!/bin/bash' 'set -euo pipefail' 'subject="${1:-}"' "verbs='feat|fix|docs|test|build|ci|refactor|perf|style|chore|revert'" 'pattern="^(feat|fix|docs|test|build|ci|refactor|perf|style|chore|revert)[(][a-z0-9][a-z0-9-]*[)]: .*[^.]$"' 'if [[ ! "$subject" =~ $pattern ]]; then' '  echo "Expected verb(area): description without a trailing full stop, received: $subject" >&2' '  exit 1' 'fi' > "$validator"
+          fi
+          chmod +x "$validator"
+      - name: Validate pull request title
+        env:
+          PR_TITLE: ${{ github.event.pull_request.title }}
+        run: >-
+          "$RUNNER_TEMP/check-conventional-subject.sh" "$PR_TITLE"
+
+  commits:
+    name: Commits
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Check out pull request
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+      - name: Validate commit subjects
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+        run: |
+          validator="$RUNNER_TEMP/check-conventional-subject.sh"
+          if git cat-file -e "$BASE_SHA:scripts/check-conventional-subject.sh" 2>/dev/null; then
+            git show "$BASE_SHA:scripts/check-conventional-subject.sh" > "$validator"
+          else
+            # shellcheck disable=SC2016
+            printf '%s\n' '#!/bin/bash' 'set -euo pipefail' 'subject="${1:-}"' "verbs='feat|fix|docs|test|build|ci|refactor|perf|style|chore|revert'" 'pattern="^(feat|fix|docs|test|build|ci|refactor|perf|style|chore|revert)[(][a-z0-9][a-z0-9-]*[)]: .*[^.]$"' 'if [[ ! "$subject" =~ $pattern ]]; then' '  echo "Expected verb(area): description without a trailing full stop, received: $subject" >&2' '  exit 1' 'fi' > "$validator"
+          fi
+          chmod +x "$validator"
+          subjects="$RUNNER_TEMP/commit-subjects.txt"
+          trap 'rm -f "$subjects"' EXIT
+          if ! git log --format=%s "$BASE_SHA..HEAD" > "$subjects"; then
+            echo "Failed to enumerate pull-request commits" >&2
+            exit 1
+          fi
+          while IFS= read -r subject; do
+            "$validator" "$subject"
+          done < "$subjects"

@@ -16,21 +16,19 @@ The implementation uses responsibility-based files rather than grouping unrelate
 
 ```text
 Package.swift                                      SwiftPM products, targets, dependency versions
-Sources/ClamshellCore/BuildVersion.swift          Release-please managed version
-Sources/ClamshellCore/ClamshellState.swift        Enabled and disabled domain states
-Sources/ClamshellCore/PowerSettingsParser.swift   Battery-section pmset parsing
-Sources/ClamshellCore/ProcessRunner.swift          Process boundary and Foundation adapter
-Sources/ClamshellCore/PowerSettingsClient.swift   Read and mutate pmset through ProcessRunner
-Sources/ClamshellCore/ClamshellService.swift       Idempotent state transitions
-Sources/ClamshellCore/Duration.swift               Strict m, h, and d duration parsing
-Sources/ClamshellCore/TimerMetadata.swift          Codable absolute timer deadline
-Sources/ClamshellCore/TimerController.swift        LaunchAgent lifecycle and expiry decisions
-Sources/ClamshellCore/PrivilegedInstallation.swift Root setup and uninstall rules
-Sources/ClamshellCore/SudoersPolicy.swift          Exact sudoers document generation
-Sources/ClamshellCore/ClamshellError.swift         Domain errors and exit-code mapping
+Sources/ClamshellCore/BuildVersion.swift           Release-please-managed version
+Sources/ClamshellCore/Errors/*.swift               Domain errors and user-facing recovery
+Sources/ClamshellCore/Power/*.swift                pmset parsing, reads, writes, and helper arguments
+Sources/ClamshellCore/Privilege/*.swift            Helper client, paths, and sudoers policy
+Sources/ClamshellCore/Privilege/Installation/*.swift Root setup, verification, and removal
+Sources/ClamshellCore/Process/*.swift              Process values, protocol, and Foundation adapter
+Sources/ClamshellCore/State/*.swift                State contracts and idempotent transitions
+Sources/ClamshellCore/Timing/*.swift               Duration and LaunchAgent lifecycle added in Phase 4
 Sources/ClamshellCLI/ClamshellCommand.swift        Root ArgumentParser command and composition root
 Sources/ClamshellCLI/Commands/*.swift              One public command per file
+Sources/ClamshellCLI/CommandComposition.swift      Production dependency composition
 Sources/ClamshellCLI/Console.swift                 Quiet-aware stdout and stderr rendering
+Sources/ClamshellCLI/OutputOptions.swift           Shared command output flags
 Sources/ClamshellHelper/ClamshellHelper.swift      Minimal privileged executable entry point
 App/ClamshellApp/ClamshellApp.swift               Setup-only SwiftUI application entry point
 App/ClamshellApp/SetupView.swift                  First-run, diagnostics, and removal interface
@@ -42,14 +40,16 @@ App/ClamshellControl/SetBatteryClamshellIntent.swift Exact-state App Intent acti
 App/ClamshellControl/Info.plist                    WidgetKit extension metadata
 App/ClamshellAppTests/*.swift                     Companion model tests
 App/ClamshellControlTests/*.swift                 Control model tests
-Tests/ClamshellCoreTests/*.swift                   Swift Testing suites by responsibility
-Tests/ClamshellCLITests/*.swift                    Black-box CLI tests without privilege changes
+Tests/ClamshellCoreTests/{Power,Privilege,Process,State}/*.swift Domain suites
+Tests/ClamshellCoreTests/Support/*.swift           Shared test support by responsibility
+Tests/ClamshellCLITests/Commands/*.swift           Black-box CLI tests without privilege changes
 project.yml                                        Deterministic XcodeGen app project definition
 scripts/embed-command-products.sh                 Bundle release CLI and helper payloads
 scripts/package-dmg.sh                             Build the ad-hoc-signed release DMG
 Tests/Scripts/run-dmg-packaging-tests.sh           DMG structure and input validation tests
 scripts/generate-homebrew-formula.sh              Deterministic formula generation
-scripts/validate-conventional-title.sh            Pull-request title validation
+scripts/check-conventional-subject.sh              Commit and pull-request title validation
+scripts/check.sh                                   Complete local quality gate
 .github/workflows/ci.yml                           macOS build and test checks
 .github/workflows/pr.yml                           Conventional pull-request title check
 .github/workflows/release.yml                      release-please and tap publication
@@ -59,9 +59,9 @@ version.txt                                        Simple release strategy versi
 Formula/clamshellctl.rb                            Generated formula fixture for validation
 docs/assets/clamshellctl.png                       Approved transparent README artwork
 README.md                                          Installation, safety, use, and troubleshooting
-CONTRIBUTING.md                                    Development and commit conventions
-SECURITY.md                                        Privilege boundary and reporting policy
-SUPPORT.md                                         Support channels and diagnostics
+.github/CONTRIBUTING.md                            Development and commit conventions
+.github/SECURITY.md                                Privilege boundary and reporting policy
+.github/SUPPORT.md                                 Support channels and diagnostics
 LICENSE                                            MIT licence
 ```
 
@@ -489,8 +489,8 @@ git commit -m "feat(helper): restrict privileged power mutations"
 Assert that the client runs only:
 
 ```text
-/usr/bin/sudo -n /usr/local/libexec/clamshellctl-helper enable
-/usr/bin/sudo -n /usr/local/libexec/clamshellctl-helper disable
+/usr/bin/sudo -n /Library/PrivilegedHelperTools/clamshellctl-helper enable
+/usr/bin/sudo -n /Library/PrivilegedHelperTools/clamshellctl-helper disable
 ```
 
 Map sudo's non-zero result to an error that names the setup command without echoing arbitrary stderr.
@@ -531,7 +531,7 @@ git commit -m "feat(cli): add clamshell control commands"
 
 - [ ] **Step 1: Test username validation and exact policy text**
 
-Accept only ASCII usernames matching `[A-Za-z0-9._-]+`. The generated policy contains exactly two non-comment command rules, one for `enable` and one for `disable`, both targeting `/usr/local/libexec/clamshellctl-helper`. Reject whitespace, path separators, shell punctuation, empty names, and newlines.
+Accept only ASCII usernames matching `[A-Za-z0-9._-]+`. The generated policy contains exactly two non-comment command rules, one for `enable` and one for `disable`, both targeting `/Library/PrivilegedHelperTools/clamshellctl-helper`. Reject whitespace, path separators, shell punctuation, empty names, and newlines.
 
 - [ ] **Step 2: Test installation operations through an injected file system**
 
@@ -545,7 +545,7 @@ Resolve the original user from validated `SUDO_USER`; never default to root. Loc
 
 Run: `swift test --filter SudoersPolicyTests && swift test --filter PrivilegedInstallationTests`
 
-Expected: all tests use temporary directories and recording runners; `/usr/local/libexec` and `/etc/sudoers.d` remain unchanged.
+Expected: all tests use temporary directories and recording runners; `/Library/PrivilegedHelperTools` and `/etc/sudoers.d` remain unchanged.
 
 - [ ] **Step 5: Commit installation services**
 
@@ -1081,9 +1081,9 @@ git commit -m "build(dmg): package self-contained companion"
 **Files:**
 
 - Modify: `README.md`
-- Create: `CONTRIBUTING.md`
-- Create: `SECURITY.md`
-- Create: `SUPPORT.md`
+- Create: `.github/CONTRIBUTING.md`
+- Create: `.github/SECURITY.md`
+- Create: `.github/SUPPORT.md`
 - Create: `.markdownlint-cli2.jsonc`
 
 - [ ] **Step 1: Write the complete README**
@@ -1092,18 +1092,18 @@ Cover purpose, warning and scope, separate Homebrew and DMG installation paths, 
 
 - [ ] **Step 2: Write maintenance policies**
 
-`CONTRIBUTING.md` requires Swift 6, `swift format`, `swift test`, Conventional Commits, and `verb(area): description`. `SECURITY.md` explains the helper and sudoers boundary and provides private reporting instructions. `SUPPORT.md` lists safe diagnostic commands and forbids posting sudoers contents containing unexpected local customisations without review. Configure markdownlint with `MD013` disabled so prose uses semantic lines without an arbitrary rendered-width limit; keep all other default rules enabled.
+`CONTRIBUTING.md` requires Swift 6, `scripts/check.sh`, Conventional Commits, and `verb(area): description`. `SECURITY.md` explains the helper and sudoers boundary and provides private reporting instructions. `SUPPORT.md` lists safe diagnostic commands and forbids posting sudoers contents containing unexpected local customisations without review. Configure markdownlint with `MD013` disabled so prose uses semantic lines without an arbitrary rendered-width limit; keep all other default rules enabled.
 
 - [ ] **Step 3: Check links and prose**
 
-Run: `npx --yes markdownlint-cli2 '**/*.md' '#.build'`
+Run: `scripts/check.sh && npx --yes markdownlint-cli2 '**/*.md' '#.build'`
 
 Expected: no Markdown errors. Manually verify every relative link and ensure no internal tooling paths or process notes exist anywhere in the repository.
 
 - [ ] **Step 4: Commit documentation**
 
 ```bash
-git add .markdownlint-cli2.jsonc README.md CONTRIBUTING.md SECURITY.md SUPPORT.md docs
+git add .markdownlint-cli2.jsonc README.md .github docs
 git commit -m "docs(project): document installation and maintenance"
 ```
 
@@ -1115,8 +1115,7 @@ git commit -m "docs(project): document installation and maintenance"
 
 - Create: `.github/workflows/ci.yml`
 - Create: `.github/workflows/pr.yml`
-- Create: `scripts/validate-conventional-title.sh`
-- Create: `Tests/Scripts/run-title-tests.sh`
+- Create: `scripts/check-conventional-subject.sh`
 
 - [ ] **Step 1: Test the title validator**
 
@@ -1128,21 +1127,20 @@ Use a portable anchored regular expression for the allowed Conventional Commit v
 
 - [ ] **Step 3: Add least-privilege workflows**
 
-`ci.yml` runs on pushes to `main` and pull requests, uses a macOS runner, checks out pinned action SHAs, installs XcodeGen, runs `swift package resolve`, `swift format lint --recursive --strict .`, `swift test`, `swift build -c release`, `xcodegen generate`, and an ad-hoc-signed `xcodebuild` for `ClamshellApp`. It grants `contents: read` only.
+`ci.yml` runs on pushes to `main` and pull requests, uses macOS runners, checks out pinned action SHAs, and runs formatting, SwiftLint, tests, and debug and release builds. Add XcodeGen and an unsigned `xcodebuild` when the native targets exist. It grants `contents: read` only.
 
-`pr.yml` validates the pull-request title without checking out or executing pull-request code. It grants `pull-requests: read` only.
+`pr.yml` validates the pull-request title and commit subjects. It checks out the
+trusted base and pull-request head. It executes only the trusted validator and
+grants `contents: read` only.
 
 - [ ] **Step 4: Verify locally and with actionlint**
 
 Run:
 
 ```bash
-bash Tests/Scripts/run-title-tests.sh
-swift format lint --recursive --strict .
-swift test
-xcodegen generate
-xcodebuild -project Clamshell.xcodeproj -scheme ClamshellApp -configuration Debug -destination 'platform=macOS' CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= build
-actionlint
+scripts/check-conventional-subject.sh "feat(cli): add toggle command"
+! scripts/check-conventional-subject.sh "feat: add toggle command"
+scripts/check.sh
 ```
 
 Install `actionlint` with `brew install actionlint` first when it is not already available. Expected: all local checks pass.
@@ -1150,7 +1148,7 @@ Install `actionlint` with `brew install actionlint` first when it is not already
 - [ ] **Step 5: Commit CI**
 
 ```bash
-git add .github/workflows scripts Tests/Scripts
+git add .github/workflows scripts
 git commit -m "ci(checks): verify Swift and pull-request quality"
 ```
 
@@ -1168,7 +1166,12 @@ git commit -m "ci(checks): verify Swift and pull-request quality"
 
 Use `release-type: simple`, root package `.`, `include-v-in-tag: true`, `include-component-in-tag: false`, `bump-minor-pre-major: true`, and `bump-patch-for-minor-pre-major: false`. Configure generic updaters for `Sources/ClamshellCore/BuildVersion.swift` and both `MARKETING_VERSION` entries in `project.yml`. Use the agreed visible changelog sections and hide tests and routine chores.
 
-Initial manifest content is `{}` and the root package sets `initial-version: "0.1.0"`; the first release PR therefore targets `0.1.0`. `version.txt` starts at `0.1.0` and must remain identical to `BuildVersion.current` and the two app `MARKETING_VERSION` values. The consistency script compares the manifest only after release-please has recorded a root version.
+Initial manifest content is `{ ".": "0.0.0" }`. Do not set `initial-version`;
+with `bump-minor-pre-major: true`, the first feature release targets `0.1.0`.
+`version.txt` starts at `0.1.0` and must remain identical to
+`BuildVersion.current` and the two app `MARKETING_VERSION` values. The
+consistency script treats the synthetic manifest version as the pre-release
+bootstrap value until release-please records the first release.
 
 - [ ] **Step 2: Add configuration validation**
 
@@ -1341,14 +1344,11 @@ Close the launch milestone only after the GitHub Release, public DMG, Homebrew i
 Before declaring the MVP complete, run:
 
 ```bash
-swift format lint --recursive --strict .
-swift test
-swift build -c release
-xcodegen generate
-xcodebuild -project Clamshell.xcodeproj -scheme ClamshellApp -configuration Release -destination 'platform=macOS' CODE_SIGN_IDENTITY=- DEVELOPMENT_TEAM= test
-actionlint
+scripts/check.sh
 bash scripts/check-version-consistency.sh
-bash Tests/Scripts/run-title-tests.sh
+while IFS= read -r subject; do
+  scripts/check-conventional-subject.sh "$subject"
+done < <(git log --format=%s origin/main..HEAD)
 bash Tests/Scripts/run-dmg-packaging-tests.sh
 bash Tests/Scripts/run-formula-generator-tests.sh
 bash Tests/Scripts/run-publish-formula-tests.sh
