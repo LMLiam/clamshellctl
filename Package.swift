@@ -6,6 +6,7 @@ let package = Package(
   name: "clamshellctl",
   platforms: [.macOS(.v13)],
   products: [
+    .library(name: "ClamshellCore", targets: ["ClamshellCore"]),
     .executable(name: "clamshellctl", targets: ["ClamshellCLI"]),
     .executable(name: "clamshellctl-helper", targets: ["ClamshellHelper"]),
   ],

@@ -1,0 +1,77 @@
+name: Clamshell
+
+options:
+  deploymentTarget:
+    macOS: "26.0"
+
+packages:
+  ClamshellKit:
+    path: .
+
+settings:
+  base:
+    SWIFT_VERSION: "6.0"
+    CODE_SIGN_STYLE: Manual
+    CODE_SIGN_IDENTITY: "-"
+    DEVELOPMENT_TEAM: ""
+    ARCHS: "arm64 x86_64"
+    ONLY_ACTIVE_ARCH: NO
+    MARKETING_VERSION: "0.1.0"
+    CURRENT_PROJECT_VERSION: 1
+
+targets:
+  ClamshellApp:
+    type: application
+    platform: macOS
+    sources:
+      - App/ClamshellApp
+    info:
+      path: App/ClamshellApp/Info.plist
+      properties:
+        CFBundleDisplayName: Clamshell
+        LSApplicationCategoryType: public.app-category.utilities
+        LSUIElement: true
+    dependencies:
+      - package: ClamshellKit
+        product: ClamshellCore
+      - target: ClamshellControl
+        embed: true
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: uk.co.lmliam.clamshell
+        PRODUCT_NAME: Clamshell
+
+  ClamshellControl:
+    type: app-extension
+    platform: macOS
+    sources:
+      - App/ClamshellControl
+    info:
+      path: App/ClamshellControl/Info.plist
+      properties:
+        CFBundleDisplayName: Clamshell Control
+        NSExtension:
+          NSExtensionPointIdentifier: com.apple.widgetkit-extension
+    dependencies:
+      - package: ClamshellKit
+        product: ClamshellCore
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: uk.co.lmliam.clamshell.control
+        PRODUCT_NAME: ClamshellControl
+
+  ClamshellAppTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - App/ClamshellAppTests
+    dependencies:
+      - target: ClamshellApp
+
+  ClamshellControlTests:
+    type: bundle.unit-test
+    platform: macOS
+    sources:
+      - App/ClamshellControlTests
+    dependencies:
+      - target: ClamshellControl
