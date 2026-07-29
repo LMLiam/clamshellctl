@@ -2,8 +2,8 @@
 
 ## Supported versions
 
-Only the latest published release receives security fixes. The project has not
-published its first release yet.
+The maintainer provides security fixes only for the latest published release.
+Update to the latest release before you report a problem that is fixed there.
 
 ## Report a vulnerability
 
@@ -18,11 +18,15 @@ and keep you informed while we validate and fix it.
 ## Security-sensitive surfaces
 
 Changes to the root-owned helper, sudoers policy, installation paths, ownership
-or permissions, process execution, and unsigned app distribution require extra
-review. The helper must continue to accept only the exact `enable` and
-`disable` actions. The sudoers policy must not grant password-free access to
-the public CLI, `pmset`, a shell, or a user-writable executable.
+or permissions, process execution, Control Centre request boundary, release
+workflow, checksum, and unsigned app distribution require extra review. The
+helper must continue to accept only the exact `enable` and `disable` actions.
+The sudoers policy must not grant password-free access to the public CLI,
+`pmset`, a shell, or a user-writable executable.
 
-The planned companion app and DMG will use ad-hoc signing without Apple
-notarisation. Release documentation must state that boundary and provide the
-specific Gatekeeper approval steps without implying Apple review.
+The companion app and DMG use ad-hoc signing without Apple notarisation.
+Release documentation must state that boundary and provide the specific
+Gatekeeper approval steps without implying Apple review.
+
+Read the [privilege model](../docs/privilege-model.md) for the intended paths,
+permissions, commands, and Battery Power boundary.

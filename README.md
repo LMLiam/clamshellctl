@@ -71,12 +71,13 @@ file permissions, and command boundary.
 ## Help
 
 - Use the [troubleshooting guide](docs/troubleshooting.md) for common problems.
-- Read [SUPPORT.md](SUPPORT.md) before you ask a usage question.
-- Report a security problem through the process in [SECURITY.md](SECURITY.md).
+- Read [SUPPORT.md](.github/SUPPORT.md) before you ask a usage question.
+- Report a security problem through the process in
+  [SECURITY.md](.github/SECURITY.md).
 
 ## Contribute
 
-Read [CONTRIBUTING.md](CONTRIBUTING.md) for the development requirements,
+Read [CONTRIBUTING.md](.github/CONTRIBUTING.md) for the development requirements,
 checks, style rules, and pull request process.
 
 ## Licence

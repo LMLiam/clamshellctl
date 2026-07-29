@@ -86,5 +86,5 @@ For the companion app, open Clamshell and select **Set Up**.
 
 ## Get more help
 
-Read [SUPPORT.md](../SUPPORT.md) and use the correct issue form. Use private
-vulnerability reporting for a security problem.
+Read [SUPPORT.md](../.github/SUPPORT.md) and use the correct issue form. Use
+private vulnerability reporting for a security problem.

@@ -3,24 +3,24 @@
 ## Prerequisites
 
 You need macOS, Xcode 26.6 or later, and Swift 6.3 or later. You also need
-SwiftLint 0.65.0 and [actionlint](https://github.com/rhysd/actionlint).
+XcodeGen 2.46.0, SwiftLint 0.65.0, actionlint 1.7.12, Node.js, and npm.
 Install the development tools with:
 
 ```bash
-brew install actionlint swiftlint
+brew install actionlint node swiftlint xcodegen
 ```
-
-The future companion app also requires
-[XcodeGen](https://github.com/yonaskolb/XcodeGen).
 
 ## Setup
 
-Fork the repository, clone your fork, and create a branch from `main`. Resolve
-the package dependencies once after cloning:
+Fork the repository, clone your fork, and create a branch from `main`. Generate
+the Xcode project and resolve the package dependencies after cloning:
 
 ```bash
+xcodegen generate
 swift package resolve
 ```
+
+Do not commit `Clamshell.xcodeproj`. XcodeGen creates it from `project.yml`.
 
 Do not run tests against live privileged paths. Tests must use fake process and
 filesystem boundaries; they must never change `pmset`, invoke `sudo`, or write
@@ -32,6 +32,7 @@ Run the complete local gate before each pull request:
 
 ```bash
 scripts/check.sh
+npx --yes markdownlint-cli2 '**/*.md' '#.build'
 ```
 
 The script checks formatting, SwiftLint, tests, debug and release builds, and
@@ -63,6 +64,10 @@ include product names, commands, code identifiers, API names, quoted interface
 text, and standard names. Do not replace a precise technical term with an
 ambiguous word.
 
+Keep guides in `docs/`. Keep standard community files in `.github/`. Do not
+commit AI plans or internal process notes. The repository ignores
+`docs/plans/`.
+
 ## Commits
 
 Every commit and pull-request title must use:
@@ -93,9 +98,9 @@ change to command output, exit status, system paths, permissions, sudoers
 policy, or the helper allow-list. Include the commands you ran and update user
 documentation when behaviour changes.
 
-Maintainer approval and all required checks are needed before merge. The
-repository uses squash merging, so the pull-request title becomes the release
-commit subject.
+A maintainer must approve the pull request before merge, and all required
+checks must pass. The repository uses squash merging, so the pull-request title
+becomes the release commit subject.
 
 ## Security
 
