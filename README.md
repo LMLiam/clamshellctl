@@ -52,15 +52,10 @@ password-free access to the public CLI, app bundle, arbitrary `pmset`
 arguments, or a shell. After each mutation, `clamshellctl` will reread `pmset`
 before reporting success.
 
-See the [design](docs/clamshellctl-design.md) for the complete privilege and
-component boundaries.
-
 ## Project status
 
-The package foundation is in place. The
-[implementation plan](docs/implementation-plan.md) tracks the remaining work.
-Each behaviour will have automated tests before the repository publishes
-installation instructions.
+The CLI, privileged helper, companion app, and Control Centre control are in
+active development. Automated tests cover each published behaviour.
 
 ## Development
 
