@@ -32,6 +32,9 @@ targets:
         LSApplicationCategoryType: public.app-category.utilities
         LSUIElement: true
     dependencies:
+      - target: ClamshellControlProtocol
+        link: true
+        embed: false
       - package: ClamshellKit
         product: ClamshellCore
       - target: ClamshellControl
@@ -78,6 +81,16 @@ targets:
         GENERATE_INFOPLIST_FILE: YES
         PRODUCT_BUNDLE_IDENTIFIER: uk.co.lmliam.clamshell.control-model
 
+  ClamshellControlProtocol:
+    type: framework.static
+    platform: macOS
+    sources:
+      - App/ClamshellControlProtocol
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: uk.co.lmliam.clamshell.control-protocol
+
   ClamshellAppTests:
     type: bundle.unit-test
     platform: macOS
@@ -85,6 +98,9 @@ targets:
       - App/ClamshellAppTests
     dependencies:
       - target: ClamshellApp
+      - target: ClamshellControlProtocol
+        link: true
+        embed: false
       - package: ClamshellKit
         product: ClamshellCore
     settings:
@@ -99,6 +115,9 @@ targets:
     sources:
       - App/ClamshellControlTests
     dependencies:
+      - target: ClamshellControlProtocol
+        link: true
+        embed: false
       - target: ClamshellControlModel
         link: true
         embed: false
