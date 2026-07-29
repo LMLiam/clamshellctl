@@ -10,22 +10,15 @@ struct PrivilegedInstallationCompanionTests {
   @Test("finds the helper payload in the companion resources")
   func companionPayload() throws {
     let log = InstallationOperationLog()
-    let installation = makeInstallation(
-      fileSystem: RecordingInstallationFileSystem(
-        files: [helperPayload: "helper payload"],
-        log: log
-      ),
+    let fileSystem = RecordingInstallationFileSystem(
+      files: [helperPayload: "helper payload"],
       log: log
     )
+    let installation = makeInstallation(fileSystem: fileSystem, log: log)
 
     _ = try installation.install()
 
-    #expect(
-      Array(log.operations.prefix(2)) == [
-        .isRegularFile("/Applications/Clamshell.app/Contents/MacOS/clamshellctl-helper"),
-        .isRegularFile(helperPayload),
-      ]
-    )
+    #expect(fileSystem.contents(at: PrivilegedPaths.helper) == "helper payload")
   }
 
   @Test("reports missing setup without a privileged operation")
@@ -55,6 +48,20 @@ struct PrivilegedInstallationCompanionTests {
 
     #expect(try installation.status() == .ready)
     #expect(!log.operations.dropFirst(operationCount).contains { $0.isMutation })
+  }
+
+  @Test("reports a stale installed helper as invalid")
+  func staleHelperStatus() throws {
+    let log = InstallationOperationLog()
+    let fileSystem = RecordingInstallationFileSystem(
+      files: [helperPayload: "helper payload"],
+      log: log
+    )
+    let installation = makeInstallation(fileSystem: fileSystem, log: log)
+    _ = try installation.install()
+    fileSystem.replaceContents(at: PrivilegedPaths.helper, with: "stale helper")
+
+    #expect(try installation.status() == .invalid)
   }
 
   @Test("reports a partial setup as invalid")
@@ -109,6 +116,7 @@ struct PrivilegedInstallationCompanionTests {
       try installation.install(exposeCommand: true)
     }
     #expect(fileSystem.contents(at: PrivilegedPaths.cliLink) == "unrelated command")
+    #expect(!log.operations.contains { $0.isMutation })
   }
 
   @Test("does not expose a command from outside the companion bundle")
@@ -130,6 +138,7 @@ struct PrivilegedInstallationCompanionTests {
     #expect(throws: ClamshellError.companionExecutableRequired) {
       try installation.install(exposeCommand: true)
     }
+    #expect(!log.operations.contains { $0.isMutation })
   }
 
   @Test("removes the command only when it targets this companion")

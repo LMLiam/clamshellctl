@@ -44,6 +44,9 @@ public struct PrivilegedInstallation: Sendable {
     }
     let policy = try SudoersPolicy(username: originalUser)
     let payload = try helperPayloadPath()
+    if exposeCommand {
+      try companionCommandInstallation.preflightExposure()
+    }
 
     var didChange = false
     if try !isConfigured(payload: payload, policy: policy) {
@@ -65,6 +68,13 @@ public struct PrivilegedInstallation: Sendable {
       return .notInstalled
     }
     guard helperExists, policyExists else {
+      return .invalid
+    }
+
+    guard
+      let payload = try? helperPayloadPath(),
+      fileSystem.contentsEqual(at: payload, and: PrivilegedPaths.helper)
+    else {
       return .invalid
     }
 

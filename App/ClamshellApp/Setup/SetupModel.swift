@@ -34,6 +34,10 @@ final class SetupModel {
     await perform(.install(exposeCommand: exposeCommand))
   }
 
+  func installTerminalCommand() async {
+    await perform(.install(exposeCommand: true))
+  }
+
   func removePrivilegedSetup() async {
     await perform(.uninstall(removeCommand: true))
   }

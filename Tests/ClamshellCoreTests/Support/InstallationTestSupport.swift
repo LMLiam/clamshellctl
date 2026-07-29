@@ -186,6 +186,10 @@ final class RecordingInstallationFileSystem:
   func contents(at path: String) -> String? {
     lock.withLock { files[path] }
   }
+
+  func replaceContents(at path: String, with contents: String) {
+    lock.withLock { files[path] = contents }
+  }
 }
 
 final class InstallationRecordingRunner: ProcessRunning, @unchecked Sendable {

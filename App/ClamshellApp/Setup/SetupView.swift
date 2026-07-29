@@ -87,6 +87,13 @@ struct SetupView: View {
         }
         .disabled(model.isWorking)
 
+        if model.state == .ready {
+          Button("Install Terminal Command") {
+            Task { await model.installTerminalCommand() }
+          }
+          .disabled(model.isWorking)
+        }
+
         Spacer()
 
         if model.state == .ready || model.state == .invalidHelper {
@@ -119,7 +126,7 @@ private extension SetupState {
     case .needsSetup:
       "Install the restricted helper to enable the control."
     case .ready:
-      "The Control Centre control and the CLI are ready."
+      "The Control Centre control is ready."
     case .invalidHelper:
       "Run setup again to replace the invalid helper files."
     case .missingBundlePayload:

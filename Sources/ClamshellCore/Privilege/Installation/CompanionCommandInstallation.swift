@@ -11,7 +11,7 @@ struct CompanionCommandInstallation: Sendable {
     self.sourceExecutablePath = sourceExecutablePath
   }
 
-  func expose() throws -> Bool {
+  func preflightExposure() throws {
     guard isCompanionExecutable else {
       throw ClamshellError.companionExecutableRequired
     }
@@ -21,6 +21,17 @@ struct CompanionCommandInstallation: Sendable {
       else {
         throw ClamshellError.cliLinkConflict
       }
+      return
+    }
+    guard !fileSystem.itemExists(at: PrivilegedPaths.cliLink) else {
+      throw ClamshellError.cliLinkConflict
+    }
+  }
+
+  func expose() throws -> Bool {
+    try preflightExposure()
+
+    if fileSystem.symbolicLinkDestination(at: PrivilegedPaths.cliLink) != nil {
       return false
     }
     guard !fileSystem.itemExists(at: PrivilegedPaths.cliLink) else {

@@ -62,6 +62,27 @@ struct AppleScriptAdministratorAuthorizerTests {
     #expect(runner.invocations.isEmpty)
   }
 
+  @Test(
+    "rejects a substituted path without starting a process",
+    arguments: ["Clamshell.app", "clamshellctl"]
+  )
+  func substitutedPath(lastPathComponent: String) async {
+    let runner = RecordingProcessRunner()
+    let authorizer = AppleScriptAdministratorAuthorizer(
+      bundleURL: URL(fileURLWithPath: "/Applications/Clamshell.app"),
+      accountName: "liam",
+      runner: runner,
+      resolvedPath: { url in
+        url.lastPathComponent == lastPathComponent ? "/tmp/substitution" : url.path
+      }
+    )
+
+    await #expect(throws: AdministratorAuthorizationError.invalidApplicationLocation) {
+      try await authorizer.run(.install(exposeCommand: false))
+    }
+    #expect(runner.invocations.isEmpty)
+  }
+
   @Test("rejects an unsafe account name without starting a process")
   func unsafeAccountName() async {
     let runner = RecordingProcessRunner()

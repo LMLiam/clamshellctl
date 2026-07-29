@@ -3,24 +3,39 @@ import Foundation
 
 struct AppleScriptAdministratorAuthorizer: AdministratorAuthorizing {
   private static let applicationPath = "/Applications/Clamshell.app"
+  private static let executablePath =
+    "/Applications/Clamshell.app/Contents/MacOS/clamshellctl"
   private static let osascriptPath = "/usr/bin/osascript"
+
+  typealias ResolvedPath = @Sendable (URL) -> String
 
   private let bundleURL: URL
   private let accountName: String
   private let runner: any ProcessRunning
+  private let resolvedPath: ResolvedPath
 
   init(
     bundleURL: URL,
     accountName: String = NSUserName(),
-    runner: any ProcessRunning = FoundationProcessRunner()
+    runner: any ProcessRunning = FoundationProcessRunner(),
+    resolvedPath: @escaping ResolvedPath = {
+      $0.resolvingSymlinksInPath().standardizedFileURL.path
+    }
   ) {
     self.bundleURL = bundleURL
     self.accountName = accountName
     self.runner = runner
+    self.resolvedPath = resolvedPath
   }
 
   func run(_ request: AdministratorRequest) async throws {
-    guard bundleURL.standardizedFileURL.path == Self.applicationPath else {
+    let applicationURL = bundleURL.standardizedFileURL
+    let executableURL = applicationURL.appendingPathComponent("Contents/MacOS/clamshellctl")
+    guard
+      applicationURL.path == Self.applicationPath,
+      resolvedPath(applicationURL) == Self.applicationPath,
+      resolvedPath(executableURL) == Self.executablePath
+    else {
       throw AdministratorAuthorizationError.invalidApplicationLocation
     }
 
@@ -41,8 +56,8 @@ struct AppleScriptAdministratorAuthorizer: AdministratorAuthorizing {
 
   private func administratorScript(for request: AdministratorRequest) throws -> String {
     let account = try SudoersPolicy(username: accountName).username
-    let executable = "\(Self.applicationPath)/Contents/MacOS/clamshellctl"
-    let command = (["/usr/bin/env", "SUDO_USER=\(account)", executable] + arguments(for: request))
+    let command =
+      (["/usr/bin/env", "SUDO_USER=\(account)", Self.executablePath] + arguments(for: request))
       .map(shellQuote)
       .joined(separator: " ")
     return "do shell script \"\(appleScriptEscape(command))\" with administrator privileges"

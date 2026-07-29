@@ -42,6 +42,18 @@ struct SetupModelTests {
     #expect(model.errorMessage == nil)
   }
 
+  @Test("installs the optional Terminal command after setup")
+  func terminalCommand() async {
+    let diagnostics = RecordingDiagnostics(states: [.ready])
+    let authorizer = RecordingAuthorizer()
+    let model = SetupModel(diagnostics: diagnostics, authorizer: authorizer)
+
+    await model.installTerminalCommand()
+
+    #expect(authorizer.requests == [.install(exposeCommand: true)])
+    #expect(model.state == .ready)
+  }
+
   @Test("requests removal once and refreshes diagnostics")
   func removal() async {
     let diagnostics = RecordingDiagnostics(states: [.needsSetup])
