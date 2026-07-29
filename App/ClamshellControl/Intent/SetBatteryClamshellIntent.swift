@@ -11,9 +11,13 @@ public struct SetBatteryClamshellIntent: SetValueIntent {
   public init() {}
 
   public func perform() async throws -> some IntentResult {
+    try await perform(using: .live)
+    return .result()
+  }
+
+  public func perform(using requester: WorkspaceControlActionRequester) async throws {
     let request: ControlActionRequest =
       value ? .enableBatteryClamshellMode : .disableBatteryClamshellMode
-    try await WorkspaceControlActionRequester.live.request(request)
-    return .result()
+    try await requester.request(request)
   }
 }

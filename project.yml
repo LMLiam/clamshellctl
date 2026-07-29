@@ -111,6 +111,9 @@ targets:
     sources:
       - App/ClamshellControl/Intent
     dependencies:
+      - target: ClamshellControlModel
+        link: true
+        embed: false
       - target: ClamshellControlProtocol
         link: true
         embed: false
