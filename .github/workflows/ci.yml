@@ -2,7 +2,6 @@ name: CI
 
 on:
   pull_request:
-    branches: [main]
   push:
     branches: [main]
   workflow_dispatch:
@@ -11,14 +10,15 @@ concurrency:
   group: ci-${{ github.event.pull_request.number || github.ref }}
   cancel-in-progress: true
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   quality:
     name: Quality
     runs-on: macos-26
     timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -37,16 +37,24 @@ jobs:
           unzip -j "${archive}" swiftlint -d "${RUNNER_TEMP}/swiftlint"
           echo "${RUNNER_TEMP}/swiftlint" >> "${GITHUB_PATH}"
       - name: Check Swift formatting
-        run: swift format lint --recursive --strict Sources Tests Package.swift
+        run: swift format lint --recursive --strict App Sources Tests Package.swift
       - name: Run SwiftLint
         run: |
           test "$(swiftlint version)" = "0.65.0"
           swiftlint lint --strict
+      - name: Test conventional subjects
+        run: bash Tests/Scripts/run-title-tests.sh
+      - name: Test version consistency
+        run: |
+          bash Tests/Scripts/run-version-consistency-tests.sh
+          bash scripts/check-version-consistency.sh
 
   tests:
     name: Tests
     runs-on: macos-26
     timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -71,6 +79,8 @@ jobs:
     name: Build
     runs-on: macos-26
     timeout-minutes: 15
+    permissions:
+      contents: read
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -90,15 +100,69 @@ jobs:
         run: swift package resolve
       - name: Test DMG packaging
         run: bash Tests/Scripts/run-dmg-packaging-tests.sh
-      - name: Build debug configuration
-        run: swift build
       - name: Build release configuration
         run: swift build -c release
+
+  app:
+    name: App
+    runs-on: macos-26
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Restore Xcode dependencies
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: |
+            .build/ci/DerivedData/SourcePackages
+            ~/Library/Caches/org.swift.swiftpm
+          key: xcode-${{ runner.os }}-${{ runner.arch }}-${{ hashFiles('Package.resolved', 'project.yml') }}
+          restore-keys: xcode-${{ runner.os }}-${{ runner.arch }}-
+      - name: Install XcodeGen
+        env:
+          XCODEGEN_SHA256: 4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806
+          XCODEGEN_VERSION: 2.46.0
+        run: |
+          archive="${RUNNER_TEMP}/xcodegen.zip"
+          curl --fail --location --silent --show-error \
+            --output "${archive}" \
+            "https://github.com/yonaskolb/XcodeGen/releases/download/${XCODEGEN_VERSION}/xcodegen.zip"
+          echo "${XCODEGEN_SHA256}  ${archive}" | shasum -a 256 --check
+          unzip -q "${archive}" -d "${RUNNER_TEMP}/xcodegen"
+          echo "${RUNNER_TEMP}/xcodegen/bin" >> "${GITHUB_PATH}"
+      - name: Generate Xcode project
+        run: xcodegen generate
+      - name: Test application
+        run: >-
+          xcodebuild -quiet -project Clamshell.xcodeproj
+          -scheme ClamshellApp -configuration Debug
+          -destination "platform=macOS"
+          -derivedDataPath .build/ci/DerivedData
+          CODE_SIGNING_ALLOWED=NO test
+      - name: Test control extension
+        run: >-
+          xcodebuild -quiet -project Clamshell.xcodeproj
+          -scheme ClamshellControl -configuration Debug
+          -destination "platform=macOS"
+          -derivedDataPath .build/ci/DerivedData
+          CODE_SIGNING_ALLOWED=NO test
+      - name: Build release application
+        run: >-
+          xcodebuild -quiet -project Clamshell.xcodeproj
+          -scheme ClamshellApp -configuration Release
+          -derivedDataPath .build/ci/DerivedData
+          CODE_SIGNING_ALLOWED=NO build
 
   workflows:
     name: Workflow lint
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      contents: read
     steps:
       - name: Check out repository
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

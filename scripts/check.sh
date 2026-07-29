@@ -21,8 +21,10 @@ command -v swiftlint >/dev/null || {
 
 swift format lint --recursive --strict "${swift_paths[@]}"
 swiftlint lint --strict
+bash Tests/Scripts/run-title-tests.sh
+bash Tests/Scripts/run-version-consistency-tests.sh
+bash scripts/check-version-consistency.sh
 swift test
-swift build
 swift build -c release
 bash Tests/Scripts/run-dmg-packaging-tests.sh
 
@@ -41,9 +43,29 @@ if [[ -f project.yml ]]; then
   }
   xcodegen generate
   xcodebuild \
+    -quiet \
     -project Clamshell.xcodeproj \
     -scheme ClamshellApp \
     -configuration Debug \
+    -destination "platform=macOS" \
+    -derivedDataPath .build/check/DerivedData \
+    CODE_SIGNING_ALLOWED=NO \
+    test
+  xcodebuild \
+    -quiet \
+    -project Clamshell.xcodeproj \
+    -scheme ClamshellControl \
+    -configuration Debug \
+    -destination "platform=macOS" \
+    -derivedDataPath .build/check/DerivedData \
+    CODE_SIGNING_ALLOWED=NO \
+    test
+  xcodebuild \
+    -quiet \
+    -project Clamshell.xcodeproj \
+    -scheme ClamshellApp \
+    -configuration Release \
+    -derivedDataPath .build/check/DerivedData \
     CODE_SIGNING_ALLOWED=NO \
     build
 fi
