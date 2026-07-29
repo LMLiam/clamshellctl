@@ -26,6 +26,21 @@ The CLI will support macOS 13 and later. The optional native companion will
 require macOS 26 or later because that is where WidgetKit controls became
 available on Mac.
 
+## Temporary enablement
+
+Use `enable --for` with a whole number of minutes, hours, or days:
+
+```bash
+clamshellctl enable --for 30m
+clamshellctl enable --for 2h
+clamshellctl enable --for 1d
+```
+
+The maximum duration is 30 days. The command stores an absolute deadline and
+uses a user LaunchAgent to disable battery clamshell mode. Sleep does not reset
+the duration. A new timed command replaces the current timer. `enable` without
+`--for` and `disable` cancel the current timer.
+
 ## Safety model
 
 The project changes only the Battery Power `disablesleep` setting. It does not
