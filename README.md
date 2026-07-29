@@ -9,80 +9,77 @@
 
 Control battery clamshell mode on macOS.
 
+`clamshellctl` lets a Mac notebook use an external display while the notebook
+is closed and on battery power. You can use a terminal command on macOS 13 or
+later. On macOS 26 or later, you can also use a Control Centre control.
+
 > [!IMPORTANT]
-> `clamshellctl` is under active development and is not ready to install. The
-> repository does not yet publish a Homebrew formula or companion-app DMG.
+> The first public release is not available. Do not use an asset from an
+> untrusted source. You can build the project from source while release work
+> continues.
 
-## What it will provide
+## Features
 
-- A terminal-first `clamshellctl` command installed through Homebrew.
-- Verified `status`, `enable`, `disable`, and `toggle` operations.
-- Optional temporary enablement with automatic disablement.
-- A self-contained macOS companion app with a stateful Control Centre toggle.
-- One explicit administrator-authorised setup step, followed by narrowly
-  restricted password-free operations.
+- Read, enable, disable, or toggle battery clamshell mode.
+- Enable the mode for up to 30 days.
+- Use a stateful Control Centre control on macOS 26 or later.
+- Install one restricted helper for password-free routine changes.
+- Keep the AC Power setting unchanged.
 
-The CLI will support macOS 13 and later. The optional native companion will
-require macOS 26 or later because that is where WidgetKit controls became
-available on Mac.
+## Install
 
-## Temporary enablement
+The project will provide two installation methods:
 
-Use `enable --for` with a whole number of minutes, hours, or days:
+- **Homebrew:** Installs the terminal command and helper payload on macOS 13 or
+  later.
+- **DMG:** Installs a self-contained app, Control Centre extension, terminal
+  command, and helper payload on macOS 26 or later.
+
+Read the [installation guide](docs/installation.md) for the requirements,
+checksum check, Gatekeeper approval, and setup steps.
+
+## Use the command
+
+Run setup once after installation:
 
 ```bash
-clamshellctl enable --for 30m
+sudo clamshellctl setup
+```
+
+Then use the command without a password:
+
+```bash
+clamshellctl status
+clamshellctl enable
 clamshellctl enable --for 2h
-clamshellctl enable --for 1d
+clamshellctl disable
+clamshellctl toggle
 ```
 
-The maximum duration is 30 days. The command stores an absolute deadline and
-uses a user LaunchAgent to disable battery clamshell mode. Sleep does not reset
-the duration. A new timed command replaces the current timer. `enable` without
-`--for` and `disable` cancel the current timer.
+Read the [usage guide](docs/usage.md) for timers, Control Centre, and removal.
 
-## Safety model
+## Safety
 
-The project changes only the Battery Power `disablesleep` setting. It does not
-change the corresponding AC Power setting.
+The restricted helper accepts only `enable` and `disable`. It changes only the
+Battery Power `disablesleep` setting. The sudoers policy does not give
+password-free access to the public command, the app, a shell, or other
+`pmset` arguments.
 
-Normal mutations will pass through a root-owned helper that accepts only the
-exact `enable` and `disable` operations. The sudoers policy will grant no
-password-free access to the public CLI, app bundle, arbitrary `pmset`
-arguments, or a shell. After each mutation, `clamshellctl` will reread `pmset`
-before reporting success.
+Read the [privilege model](docs/privilege-model.md) for the installed paths,
+file permissions, and command boundary.
 
-## Project status
+## Help
 
-The CLI, privileged helper, companion app, and Control Centre control are in
-active development. Automated tests cover each published behaviour.
-
-## Development
-
-Requirements:
-
-- macOS
-- Xcode 26.6 or later
-- Swift 6.3 or later
-
-Run the current checks with:
-
-```bash
-scripts/check.sh
-```
-
-See [CONTRIBUTING.md](.github/CONTRIBUTING.md) for setup, style, testing, and
-commit conventions.
-
-## Community
-
-- Use the [issue forms](https://github.com/LMLiam/clamshellctl/issues/new/choose)
-  for bugs and feature proposals.
-- Read [SUPPORT.md](.github/SUPPORT.md) before asking a usage question.
-- Report vulnerabilities through the private process in
+- Use the [troubleshooting guide](docs/troubleshooting.md) for common problems.
+- Read [SUPPORT.md](.github/SUPPORT.md) before you ask a usage question.
+- Report a security problem through the process in
   [SECURITY.md](.github/SECURITY.md).
-- Follow the [Code of Conduct](.github/CODE_OF_CONDUCT.md) when participating.
+
+## Contribute
+
+Read [CONTRIBUTING.md](.github/CONTRIBUTING.md) for the development requirements,
+checks, style rules, and pull request process.
 
 ## Licence
 
-`clamshellctl` is available under the [MIT License](LICENSE).
+`clamshellctl` is available under the [MIT Licence](LICENSE).
