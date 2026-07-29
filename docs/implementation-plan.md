@@ -1166,12 +1166,11 @@ git commit -m "ci(checks): verify Swift and pull-request quality"
 
 Use `release-type: simple`, root package `.`, `include-v-in-tag: true`, `include-component-in-tag: false`, `bump-minor-pre-major: true`, and `bump-patch-for-minor-pre-major: false`. Configure generic updaters for `Sources/ClamshellCore/BuildVersion.swift` and both `MARKETING_VERSION` entries in `project.yml`. Use the agreed visible changelog sections and hide tests and routine chores.
 
-Initial manifest content is `{ ".": "0.0.0" }`. Do not set `initial-version`;
-with `bump-minor-pre-major: true`, the first feature release targets `0.1.0`.
-`version.txt` starts at `0.1.0` and must remain identical to
-`BuildVersion.current` and the two app `MARKETING_VERSION` values. The
-consistency script treats the synthetic manifest version as the pre-release
-bootstrap value until release-please records the first release.
+Initial manifest content is `{}`. Set `initial-version` to `0.1.0`. This value
+makes the first release `0.1.0`. After the first release, release-please uses
+Conventional Commits to select the next version. `version.txt` starts at
+`0.1.0` and must remain identical to `BuildVersion.current` and the two app
+`MARKETING_VERSION` values.
 
 - [ ] **Step 2: Add configuration validation**
 

@@ -973,14 +973,12 @@ updates:
 Create `.release-please-manifest.json`:
 
 ```json
-{
-  ".": "0.0.0"
-}
+{}
 ```
 
-The synthetic `0.0.0` root version is intentional: with
-`bump-minor-pre-major: true`, the first feature release becomes `0.1.0`.
-Release-please does not use an `initial-version` setting in this configuration.
+Set `initial-version` to `0.1.0` in the root package configuration. This value
+makes the first release `0.1.0`. After the first release, release-please uses
+Conventional Commits to select the next version.
 
 Create `CHANGELOG.md`:
 
