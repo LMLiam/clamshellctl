@@ -24,6 +24,18 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+      - name: Install SwiftLint
+        env:
+          SWIFTLINT_SHA256: d6cb0aa7a2f5f1ef306fc9e37bcb54dc9a26facc8f7784ac0c3dd3eccf5c6ba6
+          SWIFTLINT_VERSION: 0.65.0
+        run: |
+          archive="${RUNNER_TEMP}/portable_swiftlint.zip"
+          curl --fail --location --silent --show-error \
+            --output "${archive}" \
+            "https://github.com/realm/SwiftLint/releases/download/${SWIFTLINT_VERSION}/portable_swiftlint.zip"
+          echo "${SWIFTLINT_SHA256}  ${archive}" | shasum -a 256 --check
+          unzip -j "${archive}" swiftlint -d "${RUNNER_TEMP}/swiftlint"
+          echo "${RUNNER_TEMP}/swiftlint" >> "${GITHUB_PATH}"
       - name: Check Swift formatting
         run: swift format lint --recursive --strict Sources Tests Package.swift
       - name: Run SwiftLint
