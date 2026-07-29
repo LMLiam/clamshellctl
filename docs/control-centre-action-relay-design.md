@@ -61,6 +61,33 @@ will start or wake the app in the background and will not activate it.
 
 The URL handler must support both a cold app launch and a running app.
 
+## Application instance ownership
+
+Clamshell will keep one process for its bundle identifier. The copy at
+`/Applications/Clamshell.app` has priority over Debug builds and copies at
+other paths.
+
+If multiple copies have the same path priority, the copy with the latest
+launch date has priority. The process identifier will resolve a launch-date
+tie.
+
+The selected process will ask all other Clamshell processes to terminate. A
+process that does not have priority will terminate before it registers the URL
+handler or shows the setup window. This rule prevents an incomplete Debug
+bundle from handling a control request or showing its setup state.
+
+## Incomplete bundle recovery
+
+The setup state will distinguish an incomplete bundle that contains the CLI
+from one that does not contain the CLI.
+
+If the CLI exists, the setup window will show **Remove Privileged Setup**. The
+action will remove the managed helper, sudoers policy, and CLI link. The app
+will refresh the setup state after removal.
+
+If the CLI does not exist, the setup window will tell the user to reinstall
+Clamshell. The app will not offer a privileged action that it cannot run.
+
 ## Component responsibilities
 
 ### Control extension
@@ -124,6 +151,10 @@ Automated tests will cover:
 - Helper and verification failures.
 - No execution after URL validation fails.
 - The independent control value provider.
+- Installed-app priority over a Debug copy.
+- Latest-launch and process-identifier tie resolution.
+- Termination of a process that does not have priority.
+- Recovery availability for each incomplete bundle state.
 
 The manual feasibility test will cover:
 
