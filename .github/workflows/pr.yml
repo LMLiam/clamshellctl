@@ -30,7 +30,7 @@ jobs:
             git show "$BASE_SHA:scripts/check-conventional-subject.sh" > "$validator"
           else
             # shellcheck disable=SC2016
-            printf '%s\n' '#!/bin/bash' 'set -euo pipefail' 'subject="${1:-}"' "verbs='feat|fix|docs|test|build|ci|refactor|perf|style|chore|revert'" 'pattern="^(feat|fix|docs|test|build|ci|refactor|perf|style|chore|revert)[(][a-z0-9][a-z0-9-]*[)]: .+"' 'if [[ ! "$subject" =~ $pattern ]]; then' '  echo "Expected verb(area): description, received: $subject" >&2' '  exit 1' 'fi' > "$validator"
+            printf '%s\n' '#!/bin/bash' 'set -euo pipefail' 'subject="${1:-}"' "verbs='feat|fix|docs|test|build|ci|refactor|perf|style|chore|revert'" 'pattern="^(feat|fix|docs|test|build|ci|refactor|perf|style|chore|revert)[(][a-z0-9][a-z0-9-]*[)]: .*[^.]$"' 'if [[ ! "$subject" =~ $pattern ]]; then' '  echo "Expected verb(area): description without a trailing full stop, received: $subject" >&2' '  exit 1' 'fi' > "$validator"
           fi
           chmod +x "$validator"
       - env:
@@ -56,9 +56,15 @@ jobs:
             git show "$BASE_SHA:scripts/check-conventional-subject.sh" > "$validator"
           else
             # shellcheck disable=SC2016
-            printf '%s\n' '#!/bin/bash' 'set -euo pipefail' 'subject="${1:-}"' "verbs='feat|fix|docs|test|build|ci|refactor|perf|style|chore|revert'" 'pattern="^(feat|fix|docs|test|build|ci|refactor|perf|style|chore|revert)[(][a-z0-9][a-z0-9-]*[)]: .+"' 'if [[ ! "$subject" =~ $pattern ]]; then' '  echo "Expected verb(area): description, received: $subject" >&2' '  exit 1' 'fi' > "$validator"
+            printf '%s\n' '#!/bin/bash' 'set -euo pipefail' 'subject="${1:-}"' "verbs='feat|fix|docs|test|build|ci|refactor|perf|style|chore|revert'" 'pattern="^(feat|fix|docs|test|build|ci|refactor|perf|style|chore|revert)[(][a-z0-9][a-z0-9-]*[)]: .*[^.]$"' 'if [[ ! "$subject" =~ $pattern ]]; then' '  echo "Expected verb(area): description without a trailing full stop, received: $subject" >&2' '  exit 1' 'fi' > "$validator"
           fi
           chmod +x "$validator"
+          subjects="$RUNNER_TEMP/commit-subjects.txt"
+          trap 'rm -f "$subjects"' EXIT
+          if ! git log --format=%s "$BASE_SHA..HEAD" > "$subjects"; then
+            echo "Failed to enumerate pull-request commits" >&2
+            exit 1
+          fi
           while IFS= read -r subject; do
             "$validator" "$subject"
-          done < <(git log --format=%s "$BASE_SHA..HEAD")
+          done < "$subjects"
