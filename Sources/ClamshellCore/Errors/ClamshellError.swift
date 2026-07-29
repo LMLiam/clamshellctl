@@ -2,6 +2,8 @@ import Foundation
 
 public enum ClamshellError: Error, Equatable, LocalizedError {
   case administratorPrivilegesRequired(command: String)
+  case cliLinkConflict
+  case companionExecutableRequired
   case executablePathUnavailable
   case helperPayloadNotFound
   case installationVerificationFailed
@@ -29,6 +31,10 @@ public enum ClamshellError: Error, Equatable, LocalizedError {
     switch self {
     case let .administratorPrivilegesRequired(command):
       "Administrator privileges are required. Run: \(command)"
+    case .cliLinkConflict:
+      "Cannot expose the terminal command because /usr/local/bin/clamshellctl already exists."
+    case .companionExecutableRequired:
+      "The terminal command can be exposed only from /Applications/Clamshell.app."
     case .executablePathUnavailable:
       "Unable to resolve the clamshellctl executable path."
     case .helperPayloadNotFound:

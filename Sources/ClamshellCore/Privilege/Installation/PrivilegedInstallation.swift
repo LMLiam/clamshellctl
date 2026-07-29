@@ -36,7 +36,7 @@ public struct PrivilegedInstallation: Sendable {
   }
 
   /// Stages, validates, and verifies root-owned files, skipping an identical installation.
-  public func install() throws -> InstallationResult {
+  public func install(exposeCommand: Bool = false) throws -> InstallationResult {
     try requireAdministratorPrivileges()
 
     guard let originalUser = environment["SUDO_USER"], !originalUser.isEmpty else {
@@ -45,10 +45,51 @@ public struct PrivilegedInstallation: Sendable {
     let policy = try SudoersPolicy(username: originalUser)
     let payload = try helperPayloadPath()
 
-    if try isConfigured(payload: payload, policy: policy) {
-      return installationResult(didChange: false)
+    var didChange = false
+    if try !isConfigured(payload: payload, policy: policy) {
+      try install(payload: payload, policy: policy)
+      didChange = true
     }
 
+    if exposeCommand {
+      didChange = try companionCommandInstallation.expose() || didChange
+    }
+
+    return installationResult(didChange: didChange)
+  }
+
+  public func status() throws -> InstallationStatus {
+    let helperExists = fileSystem.isRegularFile(at: PrivilegedPaths.helper)
+    let policyExists = fileSystem.isRegularFile(at: PrivilegedPaths.sudoersPolicy)
+    guard helperExists || policyExists else {
+      return .notInstalled
+    }
+    guard helperExists, policyExists else {
+      return .invalid
+    }
+
+    let helperAttributes = try fileSystem.attributes(at: PrivilegedPaths.helper)
+    let policyAttributes = try fileSystem.attributes(at: PrivilegedPaths.sudoersPolicy)
+    guard
+      helperAttributes == InstalledFileAttributes(userID: 0, groupID: 0, permissions: 0o755),
+      policyAttributes == InstalledFileAttributes(userID: 0, groupID: 0, permissions: 0o440)
+    else {
+      return .invalid
+    }
+
+    for action in ["enable", "disable"] {
+      let result = try runner.run(
+        "/usr/bin/sudo",
+        arguments: ["-n", "-l", "--", PrivilegedPaths.helper, action]
+      )
+      guard result.terminationStatus == 0 else {
+        return .invalid
+      }
+    }
+    return .ready
+  }
+
+  private func install(payload: String, policy: SudoersPolicy) throws {
     let helperTemporary = try stageHelper(payload: payload)
     var helperTemporaryExists = true
     defer {
@@ -76,14 +117,17 @@ public struct PrivilegedInstallation: Sendable {
       throw ClamshellError.installationVerificationFailed
     }
 
-    return installationResult(didChange: true)
   }
 
-  /// Removes only the two managed installation paths and is safe to repeat.
-  public func uninstall() throws -> UninstallationResult {
+  /// Removes only managed installation paths and is safe to repeat.
+  public func uninstall(removeCommand: Bool = false) throws -> UninstallationResult {
     try requireAdministratorPrivileges(command: PrivilegedHelperClient.uninstallCommand)
 
     var removedPaths: [String] = []
+    if removeCommand, try companionCommandInstallation.removeIfManaged() {
+      removedPaths.append(PrivilegedPaths.cliLink)
+    }
+
     for path in [PrivilegedPaths.helper, PrivilegedPaths.sudoersPolicy]
     where fileSystem.itemExists(at: path) {
       try fileSystem.removeItem(at: path)
@@ -155,6 +199,13 @@ public struct PrivilegedInstallation: Sendable {
     )
   }
 
+  private var companionCommandInstallation: CompanionCommandInstallation {
+    CompanionCommandInstallation(
+      fileSystem: fileSystem,
+      sourceExecutablePath: executablePath
+    )
+  }
+
   private func requireAdministratorPrivileges(command: String) throws {
     guard effectiveUserID == 0 else {
       throw ClamshellError.administratorPrivilegesRequired(
@@ -169,6 +220,15 @@ public struct PrivilegedInstallation: Sendable {
     var candidates = [
       executableDirectory.appendingPathComponent("clamshellctl-helper").path
     ]
+
+    if executableDirectory.lastPathComponent == "MacOS" {
+      candidates.append(
+        executableDirectory
+          .deletingLastPathComponent()
+          .appendingPathComponent("Resources/clamshellctl-helper")
+          .path
+      )
+    }
 
     if executableDirectory.lastPathComponent == "bin" {
       candidates.append(
