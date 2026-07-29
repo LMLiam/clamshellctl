@@ -1,5 +1,13 @@
 # Changelog
 
+## [0.2.0](https://github.com/LMLiam/clamshellctl/compare/v0.1.0...v0.2.0) (2026-07-29)
+
+
+### Features
+
+* **control:** add the Control Centre companion ([#17](https://github.com/LMLiam/clamshellctl/issues/17)) ([a561652](https://github.com/LMLiam/clamshellctl/commit/a561652047957320e566b369c0c9e3903b2dd798))
+* **timer:** add temporary clamshell enablement ([#15](https://github.com/LMLiam/clamshellctl/issues/15)) ([1703d12](https://github.com/LMLiam/clamshellctl/commit/1703d12dab9b2396a63666a0493cf6f1c249520e))
+
 ## 0.1.0 (2026-07-29)
 
 
