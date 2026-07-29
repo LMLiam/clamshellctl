@@ -169,7 +169,8 @@ in order:
 2. SwiftLint in strict lint mode.
 3. The complete Swift test suite.
 4. Debug and release package builds.
-5. XcodeGen and the companion-app build once those targets exist.
+5. `actionlint` for GitHub Actions workflows.
+6. XcodeGen and the companion-app build once those targets exist.
 
 Each command stops on failure and preserves the failing tool's output. CI uses
 the same commands rather than maintaining an independent implementation.

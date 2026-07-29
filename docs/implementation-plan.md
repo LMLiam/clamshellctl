@@ -1129,7 +1129,9 @@ Use a portable anchored regular expression for the allowed Conventional Commit v
 
 `ci.yml` runs on pushes to `main` and pull requests, uses macOS runners, checks out pinned action SHAs, and runs formatting, SwiftLint, tests, and debug and release builds. Add XcodeGen and an unsigned `xcodebuild` when the native targets exist. It grants `contents: read` only.
 
-`pr.yml` validates the pull-request title without checking out or executing pull-request code. It grants `pull-requests: read` only.
+`pr.yml` validates the pull-request title and commit subjects. It checks out the
+trusted base and pull-request head. It executes only the trusted validator and
+grants `contents: read` only.
 
 - [ ] **Step 4: Verify locally and with actionlint**
 

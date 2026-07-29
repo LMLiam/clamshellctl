@@ -14,7 +14,7 @@ requests.
 
 ---
 
-### Task 1: Add the repository configuration
+## Task 1: Add the repository configuration
 
 **Files:**
 
@@ -183,8 +183,8 @@ Expected: only `.coderabbit.yaml` is included in the commit.
 
 - [ ] **Step 2: Verify pull-request issue coverage**
 
-Confirm that pull request #11 states that it partially addresses issues #7 and
-#8 without closing either issue.
+Confirm that pull request #11 states that it partially addresses issues #7 and #8
+without closing either issue.
 
 - [ ] **Step 3: Run the configured pre-merge checks**
 
@@ -195,8 +195,8 @@ Post this pull-request comment:
 ```
 
 Expected: the docstring and title checks are disabled. Description and linked
-issue assessment run as warnings, with the issue assessment recognising #7 and
-#8 as partial scope.
+issue assessment run as warnings, with the issue assessment recognising #7 and #8
+as partial scope.
 
 - [ ] **Step 4: Verify the final review state**
 
