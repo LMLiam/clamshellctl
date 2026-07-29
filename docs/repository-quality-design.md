@@ -172,8 +172,9 @@ in order:
 5. `actionlint` for GitHub Actions workflows.
 6. XcodeGen and the companion-app build once those targets exist.
 
-Each command stops on failure and preserves the failing tool's output. CI uses
-the same commands rather than maintaining an independent implementation.
+Each local command stops on failure and preserves the failing tool's output.
+CI runs the same checks in separate jobs to provide parallel feedback. The
+script remains the single local entry point.
 
 ## GitHub Actions
 
